@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QComboBox, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QLabel, QMessageBox
 )
+from fractions import Fraction
 
 def generate_sine_wave(freq, duration=1.0, sample_rate=44100):
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -24,8 +25,9 @@ def midi_to_note_name(midi_note):
 class SynthApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.intervals = []  # List to store interval ratios (floats)
-        self.tonic_freq = None  # Will store the tonic frequency
+        self.intervals = []  # List to store interval ratios as Fraction objects.
+        self.tonic_freq = None  # Will store the tonic frequency.
+        self.default_tonic = midi_to_freq(60)  # Middle C (MIDI 60).
         self.initUI()
         
     def initUI(self):
@@ -76,8 +78,19 @@ class SynthApp(QWidget):
         main_layout.addWidget(self.scaleLabel)
         main_layout.addLayout(self.scaleLayout)
         
+        # --- Reset Button Section ---
+        self.resetButton = QPushButton("Reset Scale", self)
+        self.resetButton.clicked.connect(self.reset_scale)
+        main_layout.addWidget(self.resetButton)
+        
         self.setLayout(main_layout)
         self.setWindowTitle("Scale Workshop")
+        
+        # Initialize with default tonic (middle C)
+        self.tonic_freq = self.default_tonic
+        # Set note_combo to middle C (MIDI 60, which is index 60 - 48 = 12)
+        self.note_combo.setCurrentIndex(12)
+        self.update_scale_display()
         self.show()
         
     def get_tonic_frequency(self):
@@ -90,14 +103,12 @@ class SynthApp(QWidget):
             return freq
 
     def play_tonic(self):
-        # Play the tonic and initialize the scale.
+        # Play the tonic and update the scale display without resetting intervals.
         freq = self.get_tonic_frequency()
         waveform = generate_sine_wave(freq)
         sd.play(waveform, 44100)
         self.tonic_freq = freq
-        self.intervals = []  # Reset intervals when a new tonic is played
         self.update_scale_display()
-        self.intervalFreqLabel.setText("Interval Frequency: N/A")
         
     def play_frequency(self, freq):
         waveform = generate_sine_wave(freq)
@@ -105,62 +116,58 @@ class SynthApp(QWidget):
         
     def add_interval(self):
         if self.tonic_freq is None:
-            # If tonic hasn't been played yet, set it.
             self.tonic_freq = self.get_tonic_frequency()
-            self.intervals = []
         ratio_text = self.intervalInput.text().strip()
         if not ratio_text:
             QMessageBox.warning(self, "Input Error", "Please enter an interval ratio.")
             return
         try:
+            # Parse the ratio while preserving fractional notation.
             if '/' in ratio_text:
-                num, den = ratio_text.split('/')
-                ratio = float(num) / float(den)
+                new_ratio = Fraction(ratio_text)
             else:
-                ratio = float(ratio_text)
-        except ValueError:
+                new_ratio = Fraction(float(ratio_text)).limit_denominator(1000)
+        except Exception:
             QMessageBox.warning(self, "Input Error", "Invalid ratio format.")
             return
         
-        self.intervals.append(ratio)
+        self.intervals.append(new_ratio)
         
         # Compute the new frequency for display (cumulative product of intervals)
         new_freq = self.tonic_freq
         for interval in self.intervals:
-            new_freq *= interval
+            new_freq *= float(interval)
         self.intervalFreqLabel.setText(f"Interval Frequency: {new_freq:.2f} Hz")
         
         self.update_scale_display()
         
     def update_scale_display(self):
-        # Clear the existing scale layout
+        # Clear the existing scale layout.
         while self.scaleLayout.count():
             child = self.scaleLayout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
                 
-        # Start with the tonic button
+        # Start with the tonic button.
         freq = self.tonic_freq if self.tonic_freq is not None else self.get_tonic_frequency()
-        # Tonic button
         tonic_btn = QPushButton(f"{freq:.2f} Hz", self)
         tonic_btn.clicked.connect(lambda _, f=freq: self.play_frequency(f))
         self.scaleLayout.addWidget(tonic_btn)
         
-        # Compute and display subsequent notes with editable interval fields
+        # Compute and display subsequent notes with editable interval fields.
         cumulative_freq = freq
         for idx, interval in enumerate(self.intervals):
-            # Create an editable field for the interval ratio.
+            # Create an editable field for the interval ratio, preserving fractional notation.
             interval_edit = QLineEdit(self)
             interval_edit.setFixedWidth(60)
-            interval_edit.setText(f"{interval}")
-            # When editing is finished, update the interval and recalc subsequent frequencies.
+            interval_edit.setText(str(interval))
             interval_edit.editingFinished.connect(
                 lambda idx=idx, widget=interval_edit: self.interval_changed(idx, widget.text())
             )
             self.scaleLayout.addWidget(interval_edit)
             
             # Compute the new frequency by applying the interval.
-            cumulative_freq *= interval
+            cumulative_freq *= float(interval)
             note_btn = QPushButton(f"{cumulative_freq:.2f} Hz", self)
             note_btn.clicked.connect(lambda _, f=cumulative_freq: self.play_frequency(f))
             self.scaleLayout.addWidget(note_btn)
@@ -169,18 +176,26 @@ class SynthApp(QWidget):
         # Called when an interval edit is changed.
         try:
             if '/' in text:
-                num, den = text.split('/')
-                new_ratio = float(num) / float(den)
+                new_ratio = Fraction(text)
             else:
-                new_ratio = float(text)
-        except ValueError:
+                new_ratio = Fraction(float(text)).limit_denominator(1000)
+        except Exception:
             QMessageBox.warning(self, "Input Error", "Invalid ratio format in interval field.")
             return
         
-        # Update the interval value in the list.
         self.intervals[idx] = new_ratio
-        # Rebuild the scale display to update subsequent notes.
         self.update_scale_display()
+        
+    def reset_scale(self):
+        # Reset the program to its default state (tonic = middle C and intervals cleared).
+        self.tonic_freq = self.default_tonic
+        self.note_combo.setCurrentIndex(12)  # Middle C.
+        self.freqInput.clear()
+        self.intervals = []
+        self.intervalFreqLabel.setText("Interval Frequency: N/A")
+        self.update_scale_display()
+        waveform = generate_sine_wave(self.tonic_freq)
+        sd.play(waveform, 44100)
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
