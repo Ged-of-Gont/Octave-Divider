@@ -1,82 +1,126 @@
 import sys
 import numpy as np
 import sounddevice as sd
-from PyQt5.QtWidgets import QApplication, QWidget, QComboBox, QLineEdit, QPushButton, QVBoxLayout, QLabel
+from PyQt5.QtWidgets import (QApplication, QWidget, QComboBox, QLineEdit, 
+                             QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox)
 
 def generate_sine_wave(freq, duration=1.0, sample_rate=44100):
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
     waveform = np.sin(2 * np.pi * freq * t)
     return waveform
 
+def midi_to_freq(midi_note):
+    # Standard conversion: A4 (MIDI 69) = 440 Hz.
+    return 440 * 2 ** ((midi_note - 69) / 12)
+
+def midi_to_note_name(midi_note):
+    note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    octave = (midi_note // 12) - 1
+    note = note_names[midi_note % 12]
+    return f"{note}{octave}"
+
 class SynthApp(QWidget):
     def __init__(self):
         super().__init__()
+        self.scale_notes = []  # will store the frequencies for the built scale
         self.initUI()
         
     def initUI(self):
-        # Combo box for 48 tones over 4 octaves
-        self.combo = QComboBox(self)
-        notes = []
-        for octave in range(3, 7):  # Using octaves 3 to 6
-            for i in range(12):
-                # Calculate semitone offset from A4 (which is at 440 Hz)
-                # Here, we approximate by treating A as the 10th note (index 9) in a 0-indexed scale starting at C.
-                n = (octave - 4) * 12 + i - 9
-                freq = 440 * (2 ** (n / 12))
-                notes.append(f"{octave}:{i} - {freq:.2f} Hz")
-        self.combo.addItems(notes)
+        main_layout = QVBoxLayout()
+
+        # --- Base Tone Section ---
+        self.note_combo = QComboBox(self)
+        # Generate 48 tones from MIDI 48 (C3) to MIDI 95 (B6)
+        self.midi_notes = list(range(48, 96))
+        for midi_note in self.midi_notes:
+            note_name = midi_to_note_name(midi_note)
+            freq = midi_to_freq(midi_note)
+            self.note_combo.addItem(f"{note_name} - {freq:.2f} Hz", freq)
         
-        # Frequency input field (manual entry)
         self.freqInput = QLineEdit(self)
         self.freqInput.setPlaceholderText("Enter frequency manually (Hz)")
         
-        # Button to play the base tone
-        self.playButton = QPushButton("Play Base Tone", self)
-        self.playButton.clicked.connect(self.play_tone)
+        self.playBaseButton = QPushButton("Play Tonic", self)
+        self.playBaseButton.clicked.connect(self.play_base_tone)
+
+        base_layout = QVBoxLayout()
+        base_layout.addWidget(QLabel("Select Tonic:"))
+        base_layout.addWidget(self.note_combo)
+        base_layout.addWidget(self.freqInput)
+        base_layout.addWidget(self.playBaseButton)
         
-        # Interval ratio input
+        main_layout.addLayout(base_layout)
+        
+        # --- Interval Addition Section ---
         self.intervalInput = QLineEdit(self)
         self.intervalInput.setPlaceholderText("Enter interval ratio (e.g., 3/2)")
+        self.addIntervalButton = QPushButton("Add Interval", self)
+        self.addIntervalButton.clicked.connect(self.add_interval)
         
-        # Button to play the interval tone
-        self.addIntervalButton = QPushButton("Play Interval Tone", self)
-        self.addIntervalButton.clicked.connect(self.play_interval_tone)
+        self.intervalFreqLabel = QLabel("Interval Frequency: N/A", self)
         
-        # Layout setup
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("Select Tonic:"))
-        layout.addWidget(self.combo)
-        layout.addWidget(self.freqInput)
-        layout.addWidget(self.playButton)
-        layout.addWidget(QLabel("Enter Interval Ratio:"))
-        layout.addWidget(self.intervalInput)
-        layout.addWidget(self.addIntervalButton)
+        interval_layout = QVBoxLayout()
+        interval_layout.addWidget(QLabel("Enter Interval Ratio:"))
+        interval_layout.addWidget(self.intervalInput)
+        interval_layout.addWidget(self.addIntervalButton)
+        interval_layout.addWidget(self.intervalFreqLabel)
         
-        self.setLayout(layout)
-        self.setWindowTitle("Simple Audio Synth")
+        main_layout.addLayout(interval_layout)
+        
+        # --- Scale Display Section (Horizontal) ---
+        self.scaleLayout = QHBoxLayout()
+        self.scaleLabel = QLabel("Scale:", self)
+        main_layout.addWidget(self.scaleLabel)
+        main_layout.addLayout(self.scaleLayout)
+        
+        self.setLayout(main_layout)
+        self.setWindowTitle("Scale Workshop")
         self.show()
         
-    def play_tone(self):
-        # Get frequency either from manual input or the combo box selection
+    def get_base_frequency(self):
+        # Try to get the frequency from manual input first; if not provided, use the combo box.
         try:
             freq = float(self.freqInput.text())
+            return freq
         except ValueError:
-            index = self.combo.currentIndex()
-            text = self.combo.itemText(index)
-            # Assumes the frequency is the second-to-last element when splitting the string.
-            freq = float(text.split()[-2])
+            # Use the frequency stored in the combo box item data
+            freq = self.note_combo.currentData()
+            return freq
+
+    def play_base_tone(self):
+        freq = self.get_base_frequency()
+        waveform = generate_sine_wave(freq)
+        sd.play(waveform, 44100)
+        # Reset the scale to start with the base frequency
+        self.scale_notes = [freq]
+        # Clear any previous scale buttons
+        while self.scaleLayout.count():
+            child = self.scaleLayout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        # Add a button for the tonic in the horizontal scale display
+        btn = QPushButton(f"{freq:.2f} Hz", self)
+        btn.clicked.connect(lambda _, f=freq: self.play_frequency(f))
+        self.scaleLayout.addWidget(btn)
+        self.intervalFreqLabel.setText("Interval Frequency: N/A")
+        
+    def play_frequency(self, freq):
         waveform = generate_sine_wave(freq)
         sd.play(waveform, 44100)
         
-    def play_interval_tone(self):
-        # Use the base frequency from manual input or combo box selection
-        try:
-            base_freq = float(self.freqInput.text())
-        except ValueError:
-            index = self.combo.currentIndex()
-            text = self.combo.itemText(index)
-            base_freq = float(text.split()[-2])
-        ratio_text = self.intervalInput.text()
+    def add_interval(self):
+        # Ensure there's a tonic to build on.
+        if not self.scale_notes:
+            base_freq = self.get_base_frequency()
+            self.scale_notes = [base_freq]
+            btn = QPushButton(f"{base_freq:.2f} Hz", self)
+            btn.clicked.connect(lambda _, f=base_freq: self.play_frequency(f))
+            self.scaleLayout.addWidget(btn)
+        last_freq = self.scale_notes[-1]
+        ratio_text = self.intervalInput.text().strip()
+        if not ratio_text:
+            QMessageBox.warning(self, "Input Error", "Please enter an interval ratio.")
+            return
         try:
             if '/' in ratio_text:
                 num, den = ratio_text.split('/')
@@ -84,10 +128,16 @@ class SynthApp(QWidget):
             else:
                 ratio = float(ratio_text)
         except ValueError:
-            ratio = 1.0  # Fallback to unison if parsing fails
-        new_freq = base_freq * ratio
-        waveform = generate_sine_wave(new_freq)
-        sd.play(waveform, 44100)
+            QMessageBox.warning(self, "Input Error", "Invalid ratio format.")
+            return
+        new_freq = last_freq * ratio
+        self.scale_notes.append(new_freq)
+        # Update the label to display the new frequency
+        self.intervalFreqLabel.setText(f"Interval Frequency: {new_freq:.2f} Hz")
+        # Create a new button for the new note and add it horizontally
+        btn = QPushButton(f"{new_freq:.2f} Hz", self)
+        btn.clicked.connect(lambda _, f=new_freq: self.play_frequency(f))
+        self.scaleLayout.addWidget(btn)
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
