@@ -3,12 +3,17 @@ import math
 import numpy as np
 import sounddevice as sd
 from fractions import Fraction
+
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QComboBox, QLineEdit, QPushButton,
-    QVBoxLayout, QHBoxLayout, QLabel, QMessageBox, QScrollArea,
-    QFrame
+    QApplication, QWidget, QLineEdit, QPushButton,
+    QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
+    QComboBox, QFrame
 )
 from PyQt5.QtCore import Qt
+
+# Matplotlib imports for embedding into PyQt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
 
 ###############################################################################
 # Utility Functions
@@ -20,357 +25,237 @@ def generate_sine_wave(freq, duration=1.0, sample_rate=44100):
     return waveform
 
 def midi_to_freq(midi_note):
-    # Standard conversion: A4 (MIDI 69) = 440 Hz
-    return 440 * 2 ** ((midi_note - 69) / 12)
+    """Standard conversion: A4 (MIDI 69) = 440 Hz."""
+    return 440.0 * 2.0 ** ((midi_note - 69) / 12.0)
 
-def midi_to_note_name(midi_note):
-    note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-    octave = (midi_note // 12) - 1
-    note = note_names[midi_note % 12]
-    return f"{note}{octave}"
+def fraction_str(value):
+    """
+    Given a float like 1.3333, return a simplified fraction (e.g. "4/3").
+    If it can't find a nice fraction, just return the float in short format.
+    """
+    try:
+        frac = Fraction(value).limit_denominator(32)  # You can adjust the denominator limit
+        return f"{frac.numerator}/{frac.denominator}"
+    except:
+        return f"{value:.3f}"
+
+###############################################################################
+# Main Canvas for Plot
+###############################################################################
+class ScaleCanvas(FigureCanvasQTAgg):
+    """
+    A Matplotlib canvas that draws the scale from 1.0 to 2.0 along the x-axis,
+    with vertical ticks for each scale degree, interval labels, and frequency labels.
+    """
+    def __init__(self, parent=None, width=5, height=3, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super().__init__(fig)
+        self.setParent(parent)
+
+    def plot_scale(self, scale_degrees, tonic_freq):
+        """
+        scale_degrees: sorted list of floats between 1.0 and 2.0 (inclusive).
+                       e.g. [1.0, 1.25, 1.5, 2.0]
+        tonic_freq: float, e.g. 261.63 for middle C
+        """
+        self.axes.clear()
+        
+        # Basic plot settings
+        self.axes.set_xlim(0.95, 2.05)  # just a bit beyond 1.0 and 2.0
+        self.axes.set_ylim(-0.5, 0.5)   # just a small vertical range for text
+        self.axes.axhline(0, color='white', linewidth=1)  # x-axis line
+        
+        # Plot each scale degree as a vertical line
+        for x in scale_degrees:
+            self.axes.axvline(x, color='gray', linestyle='-', linewidth=1)
+
+        # Label intervals between adjacent degrees
+        for i in range(len(scale_degrees) - 1):
+            left = scale_degrees[i]
+            right = scale_degrees[i+1]
+            gap = right / left  # e.g. 1.5/1.25 = 1.2 => 6/5
+            mid_x = (left + right) / 2.0
+            
+            # Interval label above the axis
+            self.axes.text(mid_x, 0.15, fraction_str(gap),
+                           ha='center', va='bottom', color='white', fontsize=12)
+
+        # Label each degree: ratio above, frequency below
+        for x in scale_degrees:
+            ratio_label = fraction_str(x)  # fraction vs. unison
+            freq = x * tonic_freq
+            freq_label = f"{freq:.4g} Hz"  # ~4 significant figures
+
+            # ratio text above x-axis
+            self.axes.text(x, 0.35, ratio_label,
+                           ha='center', va='bottom', color='cyan', fontsize=10)
+            # freq text below x-axis
+            self.axes.text(x, -0.35, freq_label,
+                           ha='center', va='top', color='yellow', fontsize=9)
+
+        # Hide standard x and y ticks
+        self.axes.set_xticks([])
+        self.axes.set_yticks([])
+        self.axes.set_facecolor("#2C2C2C")
+        self.axes.spines["top"].set_visible(False)
+        self.axes.spines["bottom"].set_visible(False)
+        self.axes.spines["left"].set_visible(False)
+        self.axes.spines["right"].set_visible(False)
+
+        self.draw()
 
 ###############################################################################
 # Main Application Class
 ###############################################################################
-
-class SynthApp(QWidget):
+class ScaleWorkshop(QWidget):
     def __init__(self):
         super().__init__()
         
-        # List of interval ratios (as Fractions), e.g. [3/2, 5/4, ...].
-        self.intervals = []
-        # The current tonic frequency (float).
-        self.tonic_freq = None
-        # Default tonic = Middle C (MIDI 60).
-        self.default_tonic = midi_to_freq(60)
+        self.setWindowTitle("Scale Workshop (Graphical)")
+        self.setMinimumSize(1200, 800)
+        
+        # Default = Middle C
+        self.default_tonic = 261.63
+        self.tonic_freq = self.default_tonic
+        
+        # Store a sorted list of scale degrees (floats), always including 1.0 and 2.0
+        self.scale_degrees = [1.0, 2.0]  # unison and octave
         
         self.initUI()
-        
+
     def initUI(self):
-        """
-        Set up the main window, color scheme, and all widgets/layouts.
-        """
-        # -----------------
-        # Window setup
-        # -----------------
-        self.setWindowTitle("Scale Workshop")
-        # A larger minimum size so nothing is cramped
-        self.setMinimumSize(1200, 700)
-        
-        # -----------------
-        # Dark Mode Styling
-        # -----------------
-        self.setStyleSheet("""
-            /* Overall dark background, light text, modern sans-serif font */
-            QWidget {
-                background-color: #2C2C2C;
-                color: #EEEEEE;
-                font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-                font-size: 15px;
-            }
-            /* Slightly lighter line edit background, subtle border */
-            QLineEdit {
-                background-color: #424242;
-                border: 1px solid #555;
-                border-radius: 4px;
-                padding: 6px;
-                margin: 4px;
-                color: #EEEEEE;
-            }
-            /* Accent color for buttons, with hover effect */
-            QPushButton {
-                background-color: #E91E63;
-                color: #FFFFFF;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 14px;
-                margin: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #C2185B;
-            }
-            /* Labels have small margins */
-            QLabel {
-                margin: 4px;
-            }
-        """)
-
-        # -----------------
-        # Main Layout
-        # -----------------
         main_layout = QVBoxLayout(self)
-        self.setLayout(main_layout)
-
-        # --- Tonic Selection Section ---
-        tonic_layout = QVBoxLayout()
-        tonic_label = QLabel("Select Tonic:")
-        tonic_layout.addWidget(tonic_label)
         
+        # ----------- Top: Tonic & Ratio Input -----------
+        input_layout = QHBoxLayout()
+        
+        # Tonic Frequency
+        self.tonicInput = QLineEdit()
+        self.tonicInput.setPlaceholderText("Tonic Frequency (Hz)")
+        self.tonicInput.setText(f"{self.default_tonic}")
+        
+        # For convenience, also allow a combo to select common notes
         self.note_combo = QComboBox()
-        # Generate 48 tones from MIDI 48 (C3) to MIDI 95 (B6)
-        for midi_note in range(48, 96):
-            note_name = midi_to_note_name(midi_note)
+        # A quick selection of MIDI notes around Middle C
+        midi_notes = [48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72]
+        for midi_note in midi_notes:
             freq = midi_to_freq(midi_note)
-            self.note_combo.addItem(f"{note_name} - {freq:.2f} Hz", freq)
-        tonic_layout.addWidget(self.note_combo)
+            self.note_combo.addItem(f"MIDI {midi_note} ~ {freq:.2f} Hz", freq)
+        # Middle C is MIDI 60
+        self.note_combo.setCurrentIndex(midi_notes.index(60))
+        # When the combo changes, we update the line edit with that frequency
+        self.note_combo.currentIndexChanged.connect(self.combo_to_lineedit)
         
-        self.freqInput = QLineEdit()
-        self.freqInput.setPlaceholderText("Enter frequency manually (Hz)")
-        tonic_layout.addWidget(self.freqInput)
+        self.setTonicBtn = QPushButton("Set Tonic")
+        self.setTonicBtn.clicked.connect(self.set_tonic)
         
-        self.playTonicButton = QPushButton("Play Tonic")
-        self.playTonicButton.clicked.connect(self.play_tonic)
-        tonic_layout.addWidget(self.playTonicButton)
+        input_layout.addWidget(QLabel("Tonic:"))
+        input_layout.addWidget(self.tonicInput)
+        input_layout.addWidget(self.note_combo)
+        input_layout.addWidget(self.setTonicBtn)
         
-        main_layout.addLayout(tonic_layout)
-        
-        # --- Interval Addition Section ---
-        interval_input_layout = QVBoxLayout()
-        
-        interval_label = QLabel("Enter Interval Ratio:")
-        interval_input_layout.addWidget(interval_label)
-        
+        # Interval input
         self.intervalInput = QLineEdit()
-        self.intervalInput.setPlaceholderText("e.g., 3/2 or 1.5")
-        interval_input_layout.addWidget(self.intervalInput)
+        self.intervalInput.setPlaceholderText("Add scale degree ratio > 1.0 & < 2.0 (e.g. 3/2 or 1.414)")
         
-        self.addIntervalButton = QPushButton("Add Interval")
-        self.addIntervalButton.clicked.connect(self.add_interval)
-        interval_input_layout.addWidget(self.addIntervalButton)
+        self.addIntervalBtn = QPushButton("Add Interval")
+        self.addIntervalBtn.clicked.connect(self.add_interval)
         
-        self.intervalFreqLabel = QLabel("Interval Frequency: N/A")
-        interval_input_layout.addWidget(self.intervalFreqLabel)
+        input_layout.addWidget(QLabel("New Interval:"))
+        input_layout.addWidget(self.intervalInput)
+        input_layout.addWidget(self.addIntervalBtn)
         
-        main_layout.addLayout(interval_input_layout)
+        main_layout.addLayout(input_layout)
         
-        # --- Scale Display in a Scroll Area ---
-        # We wrap a horizontal layout in a scroll area so it never overflows the window.
-        self.scale_scroll = QScrollArea()
-        self.scale_scroll.setWidgetResizable(True)
-        self.scale_scroll.setStyleSheet("QScrollArea { border: none; }")
+        # ----------- Middle: The Plot -----------
+        self.canvas = ScaleCanvas(self, width=8, height=4, dpi=100)
+        main_layout.addWidget(self.canvas)
         
-        # This frame will hold the actual horizontal layout
-        self.scale_frame = QFrame()
-        self.scale_frame.setStyleSheet("background-color: #2C2C2C;")
+        # ----------- Bottom: Play Buttons -----------
+        # We'll show a row of frequency buttons for each scale degree
+        self.freqButtonsLayout = QHBoxLayout()
+        main_layout.addLayout(self.freqButtonsLayout)
         
-        self.scaleLayout = QHBoxLayout(self.scale_frame)
-        self.scaleLayout.setContentsMargins(10, 10, 10, 10)
-        self.scaleLayout.setSpacing(30)  # spacing between interval blocks
+        self.update_plot()
 
-        # Put the frame inside the scroll area
-        self.scale_scroll.setWidget(self.scale_frame)
+    def combo_to_lineedit(self):
+        """Whenever the user picks a note from the combo, put that frequency into the line edit."""
+        freq = self.note_combo.currentData()
+        self.tonicInput.setText(f"{freq:.2f}")
         
-        # Add a label "Scale:" above the scroll area
-        scale_label = QLabel("Scale:")
-        main_layout.addWidget(scale_label)
-        # Then add the scroll area
-        main_layout.addWidget(self.scale_scroll)
-        
-        # --- Reset Button Section ---
-        self.resetButton = QPushButton("Reset Scale")
-        self.resetButton.clicked.connect(self.reset_scale)
-        main_layout.addWidget(self.resetButton, alignment=Qt.AlignLeft)
-
-        # Initialize with default tonic (Middle C).
-        self.tonic_freq = self.default_tonic
-        # Set combo box to Middle C (MIDI 60 => index 12, since 48 is index 0).
-        self.note_combo.setCurrentIndex(12)
-        
-        # Build the initial display (no intervals yet).
-        self.update_scale_visual()
-
-    ############################################################################
-    # Event Handlers
-    ############################################################################
-    
-    def get_tonic_frequency(self):
-        """Get the frequency from manual input or the combo box."""
+    def set_tonic(self):
+        """Set the tonic frequency from the line edit. If invalid, revert to the combo value."""
         try:
-            freq = float(self.freqInput.text())
-            return freq
+            freq = float(self.tonicInput.text())
         except ValueError:
-            return self.note_combo.currentData()
-
-    def play_tonic(self):
-        """Set and play the tonic without resetting intervals."""
-        freq = self.get_tonic_frequency()
+            freq = self.note_combo.currentData()
+        if freq <= 0:
+            QMessageBox.warning(self, "Input Error", "Tonic must be a positive number.")
+            return
         self.tonic_freq = freq
-        waveform = generate_sine_wave(freq)
-        sd.play(waveform, 44100)
-        # Refresh the display to reflect the new tonic.
-        self.update_scale_visual()
-        
-    def play_frequency(self, freq):
-        """Play a note at the given frequency."""
-        waveform = generate_sine_wave(freq)
-        sd.play(waveform, 44100)
-        
+        self.update_plot()
+
     def add_interval(self):
-        """Add a new interval ratio, if it won’t exceed 2/1 in total."""
-        if self.tonic_freq is None:
-            self.tonic_freq = self.get_tonic_frequency()
-        ratio_text = self.intervalInput.text().strip()
-        if not ratio_text:
-            QMessageBox.warning(self, "Input Error", "Please enter an interval ratio.")
+        """Insert a new ratio between 1.0 and 2.0 (excluded). Then re-sort."""
+        text = self.intervalInput.text().strip()
+        if not text:
+            QMessageBox.warning(self, "Input Error", "Please enter a ratio (e.g. 3/2, 1.414).")
             return
         try:
-            new_ratio = (
-                Fraction(ratio_text) 
-                if '/' in ratio_text else Fraction(float(ratio_text)).limit_denominator(1000)
-            )
+            # parse fraction or float
+            if '/' in text:
+                val = float(Fraction(text))
+            else:
+                val = float(text)
         except Exception:
             QMessageBox.warning(self, "Input Error", "Invalid ratio format.")
             return
         
-        # Check if adding this interval would exceed 2/1 in total.
-        total_product = self.get_total_interval_product()
-        if total_product * new_ratio > 2:
-            QMessageBox.warning(self, "Input Error", "Adding this interval would exceed the octave (2/1).")
+        if val <= 1.0 or val >= 2.0:
+            QMessageBox.warning(self, "Range Error", "Ratio must be > 1.0 and < 2.0.")
             return
         
-        self.intervals.append(new_ratio)
-        self.update_scale_visual()
+        # Insert into scale_degrees (excluding duplicates)
+        if val not in self.scale_degrees:
+            self.scale_degrees.append(val)
+            self.scale_degrees.sort()
         
-    def interval_changed(self, idx, text):
-        """Called when an interval text field is edited."""
-        try:
-            new_ratio = (
-                Fraction(text) 
-                if '/' in text else Fraction(float(text)).limit_denominator(1000)
-            )
-        except Exception:
-            QMessageBox.warning(self, "Input Error", "Invalid ratio format in interval field.")
-            self.update_scale_visual()
-            return
-        
-        old_ratio = self.intervals[idx]
-        self.intervals[idx] = new_ratio
-        
-        # Check if changing this interval would exceed 2/1 in total.
-        total_product = self.get_total_interval_product()
-        if total_product > 2:
-            QMessageBox.warning(self, "Input Error", "This change would exceed the octave (2/1). Reverting.")
-            self.intervals[idx] = old_ratio
-        
-        self.update_scale_visual()
-        
-    def reset_scale(self):
-        """Reset everything to the default tonic (Middle C) and no intervals."""
-        self.tonic_freq = self.default_tonic
-        self.note_combo.setCurrentIndex(12)  # Middle C index.
-        self.freqInput.clear()
-        self.intervals = []
-        self.intervalFreqLabel.setText("Interval Frequency: N/A")
-        self.update_scale_visual()
-        # Optionally play the tonic after resetting.
-        waveform = generate_sine_wave(self.tonic_freq)
-        sd.play(waveform, 44100)
+        self.update_plot()
 
-    ############################################################################
-    # Core Logic
-    ############################################################################
+    def update_plot(self):
+        """Redraw the scale with the current scale degrees and tonic."""
+        # Plot
+        self.canvas.plot_scale(self.scale_degrees, self.tonic_freq)
+        # Rebuild frequency buttons
+        self.build_freq_buttons()
 
-    def get_total_interval_product(self):
-        """Return the product of all intervals so far (as a float)."""
-        product_fraction = Fraction(1)
-        for r in self.intervals:
-            product_fraction *= r
-        return float(product_fraction)
-        
-    def update_scale_visual(self):
-        """
-        Rebuild the horizontal layout in self.scale_frame:
-          - Tonic block on the left
-          - Then each interval in a vertical block:
-              [Fraction Label]
-              [QLineEdit]
-              [Frequency Button]
-          - Finally an Octave block at the end
-        """
-        # Clear any existing widgets in self.scaleLayout.
-        while self.scaleLayout.count():
-            child = self.scaleLayout.takeAt(0)
+    def build_freq_buttons(self):
+        """Recreate the row of frequency buttons for each scale degree."""
+        # Clear old buttons
+        while self.freqButtonsLayout.count():
+            child = self.freqButtonsLayout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
         
-        # 1) Tonic block
-        tonic_block = QVBoxLayout()
-        tonic_block.setContentsMargins(0,0,0,0)
-        
-        tonic_lbl = QLabel("Tonic")
-        tonic_lbl.setAlignment(Qt.AlignHCenter)
-        tonic_block.addWidget(tonic_lbl)
-        
-        tonic_btn = QPushButton(f"{self.tonic_freq:.2f} Hz")
-        # Typically about 100px wide
-        tonic_btn.clicked.connect(lambda _, f=self.tonic_freq: self.play_frequency(f))
-        tonic_block.addWidget(tonic_btn, alignment=Qt.AlignHCenter)
-        
-        tonic_container = QFrame()
-        tonic_container.setLayout(tonic_block)
-        self.scaleLayout.addWidget(tonic_container)
-        
-        # 2) Interval blocks
-        product_so_far = 1.0
-        for idx, ratio in enumerate(self.intervals):
-            val = float(ratio)
-            product_so_far *= val
-            freq = self.tonic_freq * product_so_far
-            
-            # Build a vertical block with label, editable ratio, and freq button
-            block_layout = QVBoxLayout()
-            block_layout.setContentsMargins(0,0,0,0)
-            
-            ratio_lbl = QLabel(str(ratio))  # shows fraction (e.g. "3/2")
-            ratio_lbl.setAlignment(Qt.AlignHCenter)
-            block_layout.addWidget(ratio_lbl)
-            
-            ratio_edit = QLineEdit(str(ratio))
-            ratio_edit.editingFinished.connect(
-                lambda idx=idx, w=ratio_edit: self.interval_changed(idx, w.text())
-            )
-            block_layout.addWidget(ratio_edit)
-            
-            freq_btn = QPushButton(f"{freq:.2f} Hz")
-            freq_btn.clicked.connect(lambda _, fr=freq: self.play_frequency(fr))
-            block_layout.addWidget(freq_btn, alignment=Qt.AlignHCenter)
-            
-            block_container = QFrame()
-            block_container.setLayout(block_layout)
-            self.scaleLayout.addWidget(block_container)
-        
-        # 3) Octave block
-        # Always a final block for the note "tonic * 2"
-        octave_block = QVBoxLayout()
-        octave_block.setContentsMargins(0,0,0,0)
-        
-        octave_lbl = QLabel("Octave")
-        octave_lbl.setAlignment(Qt.AlignHCenter)
-        octave_block.addWidget(octave_lbl)
-        
-        octave_freq = self.tonic_freq * 2
-        octave_btn = QPushButton(f"{octave_freq:.2f} Hz")
-        octave_btn.clicked.connect(lambda _, fr=octave_freq: self.play_frequency(fr))
-        octave_block.addWidget(octave_btn, alignment=Qt.AlignHCenter)
-        
-        octave_container = QFrame()
-        octave_container.setLayout(octave_block)
-        self.scaleLayout.addWidget(octave_container)
-        
-        # Update the label for the "Interval Frequency"
-        if self.intervals:
-            self.intervalFreqLabel.setText(
-                f"Interval Frequency: {(self.tonic_freq * product_so_far):.2f} Hz"
-            )
-        else:
-            self.intervalFreqLabel.setText("Interval Frequency: N/A")
+        # Create a button for each scale degree
+        for deg in self.scale_degrees:
+            freq = deg * self.tonic_freq
+            btn = QPushButton(f"{freq:.4g} Hz")
+            btn.clicked.connect(lambda _, f=freq: self.play_frequency(f))
+            self.freqButtonsLayout.addWidget(btn)
+
+    def play_frequency(self, freq):
+        """Play a short sine wave of the given frequency."""
+        wave = generate_sine_wave(freq, duration=1.0)
+        sd.play(wave, samplerate=44100)
+
 
 ###############################################################################
 # Run the App
 ###############################################################################
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ex = SynthApp()
-    ex.show()
+    window = ScaleWorkshop()
+    window.show()
     sys.exit(app.exec_())
