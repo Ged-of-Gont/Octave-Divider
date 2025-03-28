@@ -7,9 +7,9 @@ from fractions import Fraction
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
-    QComboBox, QFrame
+    QComboBox
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 
 # Matplotlib imports for embedding into PyQt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -29,80 +29,85 @@ def midi_to_freq(midi_note):
     return 440.0 * 2.0 ** ((midi_note - 69) / 12.0)
 
 def fraction_str(value):
-    """
-    Given a float like 1.3333, return a simplified fraction (e.g. "4/3").
-    If it can't find a nice fraction, just return the float in short format.
-    """
+    """Return a simplified fraction string for a float value (e.g. 1.333 -> '4/3')."""
     try:
-        frac = Fraction(value).limit_denominator(32)  # You can adjust the denominator limit
+        frac = Fraction(value).limit_denominator(32)
         return f"{frac.numerator}/{frac.denominator}"
     except:
         return f"{value:.3f}"
 
 ###############################################################################
-# Main Canvas for Plot
+# Matplotlib Canvas
 ###############################################################################
 class ScaleCanvas(FigureCanvasQTAgg):
     """
     A Matplotlib canvas that draws the scale from 1.0 to 2.0 along the x-axis,
     with vertical ticks for each scale degree, interval labels, and frequency labels.
+    We connect 'button_press_event' to handle right-click removal of intervals.
     """
-    def __init__(self, parent=None, width=5, height=3, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super().__init__(fig)
+    def __init__(self, parent=None, width=8, height=4, dpi=100):
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        super().__init__(self.fig)
         self.setParent(parent)
+        
+        self.axes = self.fig.add_subplot(111)
+        
+        # This callback will be set by the main app so we can pass click events to it
+        self.click_callback = None
+        # Connect the Matplotlib event
+        self.mpl_connect("button_press_event", self._on_click)
+
+    def _on_click(self, event):
+        """Internal method that relays matplotlib clicks to the provided callback."""
+        if self.click_callback is not None:
+            self.click_callback(event)
+        
+    def set_click_callback(self, cb):
+        self.click_callback = cb
 
     def plot_scale(self, scale_degrees, tonic_freq):
         """
-        scale_degrees: sorted list of floats between 1.0 and 2.0 (inclusive).
-                       e.g. [1.0, 1.25, 1.5, 2.0]
-        tonic_freq: float, e.g. 261.63 for middle C
+        scale_degrees: sorted list of floats in [1.0, 2.0].
+        tonic_freq: float
         """
         self.axes.clear()
         
-        # Basic plot settings
-        self.axes.set_xlim(0.95, 2.05)  # just a bit beyond 1.0 and 2.0
-        self.axes.set_ylim(-0.5, 0.5)   # just a small vertical range for text
-        self.axes.axhline(0, color='white', linewidth=1)  # x-axis line
+        # Basic axis range
+        self.axes.set_xlim(0.95, 2.05)
+        self.axes.set_ylim(-0.5, 0.5)
         
-        # Plot each scale degree as a vertical line
+        # Horizontal line for the "x-axis"
+        self.axes.axhline(0, color='white', linewidth=1)
+        
+        # Vertical lines for each scale degree
         for x in scale_degrees:
             self.axes.axvline(x, color='gray', linestyle='-', linewidth=1)
-
-        # Label intervals between adjacent degrees
+        
+        # Interval labels between adjacent degrees
         for i in range(len(scale_degrees) - 1):
             left = scale_degrees[i]
-            right = scale_degrees[i+1]
-            gap = right / left  # e.g. 1.5/1.25 = 1.2 => 6/5
+            right = scale_degrees[i + 1]
+            gap = right / left
             mid_x = (left + right) / 2.0
-            
-            # Interval label above the axis
             self.axes.text(mid_x, 0.15, fraction_str(gap),
                            ha='center', va='bottom', color='white', fontsize=12)
-
-        # Label each degree: ratio above, frequency below
+        
+        # Each scale degree: ratio above, freq below
         for x in scale_degrees:
-            ratio_label = fraction_str(x)  # fraction vs. unison
-            freq = x * tonic_freq
-            freq_label = f"{freq:.4g} Hz"  # ~4 significant figures
-
-            # ratio text above x-axis
+            ratio_label = fraction_str(x)
+            freq_val = x * tonic_freq
+            freq_label = f"{freq_val:.4g} Hz"
             self.axes.text(x, 0.35, ratio_label,
                            ha='center', va='bottom', color='cyan', fontsize=10)
-            # freq text below x-axis
             self.axes.text(x, -0.35, freq_label,
                            ha='center', va='top', color='yellow', fontsize=9)
-
-        # Hide standard x and y ticks
+        
         self.axes.set_xticks([])
         self.axes.set_yticks([])
         self.axes.set_facecolor("#2C2C2C")
-        self.axes.spines["top"].set_visible(False)
-        self.axes.spines["bottom"].set_visible(False)
-        self.axes.spines["left"].set_visible(False)
-        self.axes.spines["right"].set_visible(False)
-
+        for spine in self.axes.spines.values():
+            spine.set_visible(False)
+        
         self.draw()
 
 ###############################################################################
@@ -111,40 +116,38 @@ class ScaleCanvas(FigureCanvasQTAgg):
 class ScaleWorkshop(QWidget):
     def __init__(self):
         super().__init__()
-        
-        self.setWindowTitle("Scale Workshop (Graphical)")
+        self.setWindowTitle("Scale Workshop (Interactive)")
         self.setMinimumSize(1200, 800)
         
-        # Default = Middle C
+        # Default tonic = Middle C
         self.default_tonic = 261.63
         self.tonic_freq = self.default_tonic
         
-        # Store a sorted list of scale degrees (floats), always including 1.0 and 2.0
-        self.scale_degrees = [1.0, 2.0]  # unison and octave
+        # Scale degrees: always [1.0, 2.0] plus user-defined
+        self.scale_degrees = [1.0, 2.0]
         
         self.initUI()
-
+        
     def initUI(self):
         main_layout = QVBoxLayout(self)
         
-        # ----------- Top: Tonic & Ratio Input -----------
+        # --- Tonic & Interval Input ---
         input_layout = QHBoxLayout()
         
-        # Tonic Frequency
+        # Tonic
         self.tonicInput = QLineEdit()
         self.tonicInput.setPlaceholderText("Tonic Frequency (Hz)")
         self.tonicInput.setText(f"{self.default_tonic}")
         
-        # For convenience, also allow a combo to select common notes
         self.note_combo = QComboBox()
-        # A quick selection of MIDI notes around Middle C
         midi_notes = [48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72]
-        for midi_note in midi_notes:
-            freq = midi_to_freq(midi_note)
-            self.note_combo.addItem(f"MIDI {midi_note} ~ {freq:.2f} Hz", freq)
+        for m in midi_notes:
+            f = midi_to_freq(m)
+            self.note_combo.addItem(f"MIDI {m} ~ {f:.2f} Hz", f)
         # Middle C is MIDI 60
-        self.note_combo.setCurrentIndex(midi_notes.index(60))
-        # When the combo changes, we update the line edit with that frequency
+        if 60 in midi_notes:
+            self.note_combo.setCurrentIndex(midi_notes.index(60))
+        
         self.note_combo.currentIndexChanged.connect(self.combo_to_lineedit)
         
         self.setTonicBtn = QPushButton("Set Tonic")
@@ -155,10 +158,9 @@ class ScaleWorkshop(QWidget):
         input_layout.addWidget(self.note_combo)
         input_layout.addWidget(self.setTonicBtn)
         
-        # Interval input
+        # Interval
         self.intervalInput = QLineEdit()
-        self.intervalInput.setPlaceholderText("Add scale degree ratio > 1.0 & < 2.0 (e.g. 3/2 or 1.414)")
-        
+        self.intervalInput.setPlaceholderText("Ratio >1 & <2 (e.g. 3/2)")
         self.addIntervalBtn = QPushButton("Add Interval")
         self.addIntervalBtn.clicked.connect(self.add_interval)
         
@@ -168,47 +170,51 @@ class ScaleWorkshop(QWidget):
         
         main_layout.addLayout(input_layout)
         
-        # ----------- Middle: The Plot -----------
+        # --- The Plot ---
         self.canvas = ScaleCanvas(self, width=8, height=4, dpi=100)
         main_layout.addWidget(self.canvas)
         
-        # ----------- Bottom: Play Buttons -----------
-        # We'll show a row of frequency buttons for each scale degree
+        # Let the canvas call us back on clicks
+        self.canvas.set_click_callback(self.handle_canvas_click)
+        
+        # --- Bottom: Frequency Buttons ---
         self.freqButtonsLayout = QHBoxLayout()
         main_layout.addLayout(self.freqButtonsLayout)
         
         self.update_plot()
 
+    ############################################################################
+    # Tonic & Interval Input
+    ############################################################################
     def combo_to_lineedit(self):
-        """Whenever the user picks a note from the combo, put that frequency into the line edit."""
+        """When user picks from combo, put that freq in the line edit."""
         freq = self.note_combo.currentData()
         self.tonicInput.setText(f"{freq:.2f}")
         
     def set_tonic(self):
-        """Set the tonic frequency from the line edit. If invalid, revert to the combo value."""
+        """Set the tonic frequency from the line edit (fallback to combo if invalid)."""
         try:
             freq = float(self.tonicInput.text())
         except ValueError:
             freq = self.note_combo.currentData()
         if freq <= 0:
-            QMessageBox.warning(self, "Input Error", "Tonic must be a positive number.")
+            QMessageBox.warning(self, "Input Error", "Tonic must be > 0.")
             return
         self.tonic_freq = freq
         self.update_plot()
-
+        
     def add_interval(self):
-        """Insert a new ratio between 1.0 and 2.0 (excluded). Then re-sort."""
+        """Add a new ratio between 1.0 and 2.0, if valid."""
         text = self.intervalInput.text().strip()
         if not text:
-            QMessageBox.warning(self, "Input Error", "Please enter a ratio (e.g. 3/2, 1.414).")
+            QMessageBox.warning(self, "Input Error", "Please enter a ratio.")
             return
         try:
-            # parse fraction or float
             if '/' in text:
                 val = float(Fraction(text))
             else:
                 val = float(text)
-        except Exception:
+        except:
             QMessageBox.warning(self, "Input Error", "Invalid ratio format.")
             return
         
@@ -216,46 +222,81 @@ class ScaleWorkshop(QWidget):
             QMessageBox.warning(self, "Range Error", "Ratio must be > 1.0 and < 2.0.")
             return
         
-        # Insert into scale_degrees (excluding duplicates)
         if val not in self.scale_degrees:
             self.scale_degrees.append(val)
             self.scale_degrees.sort()
-        
         self.update_plot()
 
+    ############################################################################
+    # Plot & Frequency Buttons
+    ############################################################################
     def update_plot(self):
-        """Redraw the scale with the current scale degrees and tonic."""
-        # Plot
+        """Redraw the scale on the canvas and rebuild the freq buttons."""
         self.canvas.plot_scale(self.scale_degrees, self.tonic_freq)
-        # Rebuild frequency buttons
         self.build_freq_buttons()
-
+        
     def build_freq_buttons(self):
-        """Recreate the row of frequency buttons for each scale degree."""
-        # Clear old buttons
+        """Recreate the row of freq buttons for each scale degree."""
         while self.freqButtonsLayout.count():
             child = self.freqButtonsLayout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-        
-        # Create a button for each scale degree
         for deg in self.scale_degrees:
-            freq = deg * self.tonic_freq
-            btn = QPushButton(f"{freq:.4g} Hz")
-            btn.clicked.connect(lambda _, f=freq: self.play_frequency(f))
+            freq_val = deg * self.tonic_freq
+            btn = QPushButton(f"{freq_val:.4g} Hz")
+            btn.clicked.connect(lambda _, f=freq_val: self.play_frequency(f))
             self.freqButtonsLayout.addWidget(btn)
-
+            
     def play_frequency(self, freq):
-        """Play a short sine wave of the given frequency."""
+        """Play a short sine wave at freq."""
         wave = generate_sine_wave(freq, duration=1.0)
         sd.play(wave, samplerate=44100)
 
+    ############################################################################
+    # Right-Click Deletion - With QTimer Scheduling
+    ############################################################################
+    def handle_canvas_click(self, event):
+        """
+        Called on every mouse click in the plot.
+        We only act if:
+         - It's a right-click (button=3)
+         - The xdata is close to a scale degree (except 1.0 and 2.0)
+         - We schedule the "confirm deletion" after we leave the event callback
+        """
+        if event.button != 3 or event.xdata is None:
+            return
+        
+        tol = 0.03
+        clicked_deg = None
+        for deg in self.scale_degrees:
+            if deg in (1.0, 2.0):
+                continue
+            if abs(event.xdata - deg) < tol:
+                clicked_deg = deg
+                break
+        
+        if clicked_deg is not None:
+            # Instead of prompting right now, schedule a prompt after we exit this callback
+            QTimer.singleShot(0, lambda d=clicked_deg: self._confirm_delete_degree(d))
+    
+    def _confirm_delete_degree(self, deg):
+        """Show the confirmation message box and remove the degree if user says yes."""
+        response = QMessageBox.question(
+            self,
+            "Delete Interval?",
+            f"Delete scale degree {fraction_str(deg)}?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if response == QMessageBox.Yes:
+            self.scale_degrees.remove(deg)
+            self.update_plot()
 
 ###############################################################################
 # Run the App
 ###############################################################################
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    
     window = ScaleWorkshop()
     window.show()
     sys.exit(app.exec_())
