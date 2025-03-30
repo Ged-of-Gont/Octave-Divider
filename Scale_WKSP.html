@@ -1,180 +1,155 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Scale Workshop (Neon Tron Style)</title>
-  <style>
-    /* Overall page style */
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #0b0f1a; /* Dark bluish background */
-      color: #e0e0e0;
-      font-family: "Trebuchet MS", Arial, sans-serif;
-      font-size: 16px;
-    }
-    header {
-      padding: 1rem;
-      background: linear-gradient(90deg, #112, #224);
-      color: #00ffe0;
-      text-shadow: 1px 1px #000;
-      border-bottom: 2px solid #09aa9a;
-      font-size: 1.4rem;
-    }
-    .controls {
-      margin: 1rem;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1rem;
-    }
-    label, select, input, button {
-      font-size: 1.1rem;
-    }
-    input[type="number"], input[type="text"] {
-      padding: 5px;
-      width: 90px;
-      border-radius: 6px;
-      border: 1px solid #444;
-      background: #101828;
-      color: #ccffff;
-      outline: none;
-    }
-    select {
-      padding: 5px;
-      border-radius: 6px;
-      border: 1px solid #333;
-      background: #101828;
-      color: #99ffff;
-    }
-    button {
-      background: #0fd2ba;
-      color: #002;
-      font-weight: bold;
-      border: none;
-      border-radius: 6px;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      box-shadow: 2px 2px 4px #000;
-    }
-    button:hover {
-      background: #0aa;
-      color: #fff;
-    }
+<meta charset="UTF-8" />
+<title>Scale Workshop </title>
+<style>
+  /* Tron-like styling, right-angle corners */
+  body {
+    margin: 0; padding: 0;
+    background: #0b0f1a; 
+    color: #e0e0e0;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+  }
+  header {
+    padding: 1rem;
+    background: linear-gradient(90deg, #112, #224);
+    color: #00ffe0;
+    text-shadow: 1px 1px #000;
+    border-bottom: 2px solid #09aa9a;
+    font-size: 1.3rem;
+  }
+  .controls {
+    margin: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+  label, select, input, button {
+    font-size: 1rem;
+  }
+  input[type="number"], input[type="text"] {
+    padding: 5px;
+    width: 90px;
+    border: 1px solid #444;
+    background: #101828;
+    color: #ccffff;
+    outline: none;
+    border-radius: 0; /* right-angles */
+  }
+  select {
+    padding: 5px;
+    border: 1px solid #333;
+    background: #101828;
+    color: #99ffff;
+    border-radius: 0;
+  }
+  button {
+    background: #0fd2ba;
+    color: #002;
+    font-weight: bold;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    box-shadow: 2px 2px 4px #000;
+    border-radius: 0;
+  }
+  button:hover {
+    background: #0aa;
+    color: #fff;
+  }
 
-    /* Container for the scale line (SVG) */
-    #scale-container {
-      margin: 1rem auto;
-      background: #142030;
-      border: 2px solid #09aa9a;
-      border-radius: 10px;
-      padding: 0.5rem;
-      width: 1200px; /* Wider so text doesn't get cut off */
-    }
-    #scale-svg {
-      width: 100%;    /* Responsive */
-      height: 600px;  /* Taller so no cutoff */
-      overflow: visible;
-      background: #0b0f1a; /* matches body background, can adjust as needed */
-      display: block;
-    }
-
-    /* SVG text styles */
-    .intervalLabel {
-      fill: #fffbcc;
-      font-size: 22px;
-      text-anchor: middle;
-      dominant-baseline: middle;
-      pointer-events: none; /* Not clickable */
-    }
-    .degreeLabel {
-      fill: #f0c;  /* Neon pink/purple for the fraction label */
-      font-size: 24px;
-      font-weight: bold;
-      text-anchor: middle;
-      cursor: pointer; /* So user sees a pointer when hovering */
-      text-shadow: 1px 1px 2px #000;
-    }
-    .freqLabel {
-      fill: #0ff;  /* Neon cyan for frequency */
-      font-size: 22px;
-      text-anchor: middle;
-      cursor: pointer;
-      text-shadow: 1px 1px 2px #000;
-    }
-    .mainLine {
-      stroke: #0af;
-      stroke-width: 3px;
-    }
-    .tickLine {
-      stroke: #66b0ff;
-      stroke-width: 2px;
-    }
-  </style>
+  /* Canvas container, Tron border */
+  #canvas-container {
+    margin: 1rem auto;
+    padding: 0.5rem;
+    background: #142030;
+    border: 2px solid #09aa9a;
+    width: 1200px; /* fixed width for the canvas */
+  }
+  #scale-canvas {
+    display: block;
+    background: #0b0f1a;
+    border: 1px solid #09aa9a;
+  }
+</style>
 </head>
 <body>
-  <header>
-    <h1>Scale Workshop (Neon Tron Style)</h1>
-  </header>
+<header>
+  <h1>Scale Workshop – Canvas Auto-Spacing (Audio Resume Fix)</h1>
+</header>
 
-  <div class="controls">
-    <label>Tonic Frequency:</label>
-    <input id="tonicInput" type="number" value="261.63" step="0.01" />
-    <select id="noteSelect">
-      <option value="220">A3 (~220 Hz)</option>
-      <option value="246.94">B3 (~246.94 Hz)</option>
-      <option value="261.63" selected>C4 (~261.63 Hz)</option>
-      <option value="293.66">D4 (~293.66 Hz)</option>
-      <option value="329.63">E4 (~329.63 Hz)</option>
-      <option value="349.23">F4 (~349.23 Hz)</option>
-      <option value="392.0">G4 (392 Hz)</option>
-      <option value="440.0">A4 (440 Hz)</option>
-      <option value="493.88">B4 (~493.88 Hz)</option>
-    </select>
-    <button id="setTonicBtn">Set Tonic</button>
+<div class="controls">
+  <label>Tonic Frequency:</label>
+  <input id="tonicInput" type="number" value="261.63" step="0.01" />
+  <select id="noteSelect">
+    <option value="220">A3 (~220 Hz)</option>
+    <option value="246.94">B3 (~246.94 Hz)</option>
+    <option value="261.63" selected>C4 (~261.63 Hz)</option>
+    <option value="293.66">D4 (~293.66 Hz)</option>
+    <option value="329.63">E4 (~329.63 Hz)</option>
+    <option value="349.23">F4 (~349.23 Hz)</option>
+    <option value="392.0">G4 (392 Hz)</option>
+    <option value="440.0">A4 (440 Hz)</option>
+    <option value="493.88">B4 (~493.88 Hz)</option>
+  </select>
+  <button id="setTonicBtn">Set Tonic</button>
 
-    <label>New Interval (1 &lt; x &lt; 2):</label>
-    <input id="intervalInput" type="text" placeholder="3/2 or 1.414" />
-    <button id="addIntervalBtn">Add Interval</button>
-  </div>
+  <label>New Interval (1 < x < 2):</label>
+  <input id="intervalInput" type="text" placeholder="3/2 or 1.414" />
+  <button id="addIntervalBtn">Add Interval</button>
+</div>
 
-  <div id="scale-container">
-    <svg id="scale-svg"></svg>
-  </div>
+<div id="canvas-container">
+  <canvas id="scale-canvas" width="1200" height="600"></canvas>
+</div>
 
 <script>
-// We’ll keep an array of objects, each representing a scale degree:
-//   { fractionText: "3/2", floatVal: 1.5 }
-// Always include the unison:  { fractionText: "1/1", floatVal: 1.0 }
-// and the octave:             { fractionText: "2/1", floatVal: 2.0 }
+// scaleDegrees is our list of intervals in [1..2], always including unison & octave.
 let scaleDegrees = [
   { fractionText: "1/1", floatVal: 1.0 },
   { fractionText: "2/1", floatVal: 2.0 }
 ];
 
-// Tonic frequency (default = ~C4)
+// Default tonic
 let tonic = 261.63;
 
-// We’ll set up a 1200px-wide by 600px-high space in the SVG
-// A linear mapping from [1.0, 2.0] in ratio space to [0, 1200] in x-coords:
-const SVG_WIDTH = 1200;
-const SVG_HEIGHT = 600;
-const centerY = 300; // horizontal line in the middle of the 600px canvas
+// Setup canvas
+const canvas = document.getElementById("scale-canvas");
+const ctx = canvas.getContext("2d");
 
-// For Web Audio playback
+// Horizontal line from x=100..1100 => 1000px range for ratio in [1..2].
+const LEFT_X = 100;
+const RIGHT_X = 1100;
+const WIDTH = RIGHT_X - LEFT_X;
+const MID_Y = canvas.height / 2;
+
+// Web Audio context
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-//--------------------- UI SETUP --------------------------
+// If the browser suspends audio, we can try to resume on a user gesture
+async function ensureAudioContextRunning() {
+  if (audioCtx.state === "suspended") {
+    try {
+      await audioCtx.resume();
+    } catch(err) {
+      console.warn("AudioContext resume error:", err);
+    }
+  }
+}
+
+//--- Initialization ---
 window.addEventListener("DOMContentLoaded", init);
 
 function init() {
+  // UI hooking
   const noteSelect = document.getElementById("noteSelect");
   const tonicInput = document.getElementById("tonicInput");
   const setTonicBtn = document.getElementById("setTonicBtn");
   const intervalInput = document.getElementById("intervalInput");
   const addIntervalBtn = document.getElementById("addIntervalBtn");
 
-  // Keep the line edit synced with the dropdown
   noteSelect.addEventListener("change", () => {
     tonicInput.value = noteSelect.value;
   });
@@ -186,196 +161,242 @@ function init() {
       return;
     }
     tonic = val;
-    drawScale();
+    renderScale();
   });
 
   addIntervalBtn.addEventListener("click", () => {
     const text = intervalInput.value.trim();
     if (!text) {
-      alert("Enter a ratio (e.g., 3/2).");
+      alert("Enter a ratio, e.g. 3/2 or 1.414");
       return;
     }
-    const floatVal = parseFractionOrDecimal(text);
-    if (!isFinite(floatVal)) {
-      alert("Invalid ratio format. Try something like 3/2 or 1.414.");
+    const ratio = parseFractionOrDecimal(text);
+    if (!isFinite(ratio) || ratio <=1.0 || ratio>=2.0) {
+      alert("Ratio must be >1.0 and <2.0");
       return;
     }
-    if (floatVal <= 1.0 || floatVal >= 2.0) {
-      alert("Ratio must be > 1.0 and < 2.0!");
-      return;
+    // Insert if not present
+    if(!scaleDegrees.some(d => Math.abs(d.floatVal - ratio) < 1e-7)){
+      scaleDegrees.push({ fractionText: text, floatVal: ratio });
+      scaleDegrees.sort((a,b)=>a.floatVal - b.floatVal);
     }
-    // Insert if it’s not already in the array:
-    const already = scaleDegrees.some(d => Math.abs(d.floatVal - floatVal) < 1e-7);
-    if (!already) {
-      scaleDegrees.push({ fractionText: text, floatVal: floatVal });
-    }
-    // Always sort by floatVal
-    scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
-    drawScale();
+    renderScale();
   });
 
-  // Initial draw
-  drawScale();
+  renderScale();
 }
 
-//--------------------- PARSE HELPER -----------------------
+//--- Convert fraction or decimal input -> float
 function parseFractionOrDecimal(s) {
-  // If user typed something like "3/2"
   if (s.includes("/")) {
     const parts = s.split("/");
-    if (parts.length !== 2) return NaN;
+    if (parts.length !==2) return NaN;
     const num = parseFloat(parts[0]);
     const den = parseFloat(parts[1]);
-    if (!isFinite(num) || !isFinite(den) || den === 0) return NaN;
-    return num / den;
-  } else {
-    // else parse as decimal
-    return parseFloat(s);
+    if (!isFinite(num)||!isFinite(den)||den===0) return NaN;
+    return num/den;
+  }
+  else return parseFloat(s);
+}
+
+//--- Render the scale on the canvas
+function renderScale(){
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+  clickableRegions = [];
+
+  // Neon horizontal line
+  ctx.strokeStyle="#0af";
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(LEFT_X, MID_Y);
+  ctx.lineTo(RIGHT_X, MID_Y);
+  ctx.stroke();
+
+  // Sort degrees
+  scaleDegrees.sort((a,b)=>a.floatVal - b.floatVal);
+
+  let placedLabels=[];
+  // intervals
+  ctx.font="30px Trebuchet MS";
+  ctx.fillStyle="#fffbcc";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  for (let i=0; i<scaleDegrees.length-1; i++){
+    let leftVal=scaleDegrees[i].floatVal;
+    let rightVal=scaleDegrees[i+1].floatVal;
+    let gap = rightVal/leftVal;
+    let mid =(leftVal+rightVal)/2;
+    let midX= ratioToX(mid);
+    let gapStr= fractionStringApprox(gap);
+
+    let label= positionLabel(midX,MID_Y-50, gapStr,"interval", placedLabels);
+    drawLabel(label);
+  }
+
+  // each degree => tick + ratio + freq
+  for(let deg of scaleDegrees){
+    let x= ratioToX(deg.floatVal);
+    // tick
+    ctx.strokeStyle="#66b0ff";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(x,MID_Y-70);
+    ctx.lineTo(x,MID_Y+70);
+    ctx.stroke();
+
+    // ratio
+    ctx.font="32px Trebuchet MS";
+    ctx.fillStyle="#f0c";
+    let ratioLabel= positionLabel(x,MID_Y-90, deg.fractionText,"ratio", placedLabels);
+    ratioLabel.degree=deg;
+    drawLabel(ratioLabel);
+
+    // freq
+    ctx.font="28px Trebuchet MS";
+    ctx.fillStyle="#0ff";
+    let freqVal=deg.floatVal*tonic;
+    let freqStr= freqVal.toFixed(4)+" Hz";
+    let freqLabel= positionLabel(x,MID_Y+90, freqStr,"freq", placedLabels,true);
+    freqLabel.degree=deg;
+    drawLabel(freqLabel);
   }
 }
 
-//--------------------- DRAWING THE SCALE ------------------
-function drawScale() {
-  const svg = document.getElementById("scale-svg");
-  // Clear old content
-  svg.innerHTML = "";
+//--- ratio [1..2] => x [LEFT_X..RIGHT_X]
+function ratioToX(r){
+  return LEFT_X + (r-1)*WIDTH;
+}
 
-  // Full width/height in the <svg>
-  svg.setAttribute("viewBox", `0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`);
-
-  // 1) Draw the main horizontal line
-  const mainLine = createSVG("line", {
-    x1: 0, y1: centerY,
-    x2: SVG_WIDTH, y2: centerY,
-    class: "mainLine"
-  });
-  svg.appendChild(mainLine);
-
-  // 2) Sort degrees by floatVal, ensure we keep 1.0 -> 2.0
-  scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
-
-  // 3) Intervals between consecutive degrees
-  for (let i = 0; i < scaleDegrees.length - 1; i++) {
-    const left = scaleDegrees[i].floatVal;
-    const right = scaleDegrees[i+1].floatVal;
-    const gap = right / left;
-    const mid = (left + right) / 2;
-    const midX = ratioToX(mid);
-
-    // Draw interval text above line
-    const intervalText = createSVG("text", {
-      x: midX,
-      y: centerY - 30,
-      class: "intervalLabel"
-    });
-    intervalText.textContent = fractionStringApprox(gap);
-    svg.appendChild(intervalText);
-  }
-
-  // 4) For each degree, draw the vertical tick line + ratio label + freq label
-  scaleDegrees.forEach(deg => {
-    const x = ratioToX(deg.floatVal);
-
-    // Tick line
-    const tick = createSVG("line", {
-      x1: x, y1: centerY - 40,
-      x2: x, y2: centerY + 40,
-      class: "tickLine"
-    });
-    svg.appendChild(tick);
-
-    // Ratio label (above). Clickable to remove (except unison/octave).
-    const ratioTxt = createSVG("text", {
-      x: x,
-      y: centerY - 60,
-      class: "degreeLabel"
-    });
-    ratioTxt.textContent = deg.fractionText;
-    // Only removable if not 1.0 or 2.0
-    if (deg.floatVal !== 1.0 && deg.floatVal !== 2.0) {
-      ratioTxt.addEventListener("click", () => {
-        if (confirm(`Delete scale degree "${deg.fractionText}"?`)) {
-          scaleDegrees = scaleDegrees.filter(d => d !== deg);
-          drawScale();
-        }
-      });
+//--- fraction approximation, denom<=32
+function fractionStringApprox(value){
+  let bestNum=1, bestDen=1;
+  let bestErr= Math.abs(value- bestNum/bestDen);
+  for(let d=1; d<=32; d++){
+    let n=Math.round(value*d);
+    let err=Math.abs(value- n/d);
+    if(err<bestErr){
+      bestErr=err; bestNum=n; bestDen=d;
     }
-    svg.appendChild(ratioTxt);
+  }
+  return bestNum+"/"+bestDen;
+}
 
-    // Frequency label (below). Clickable to play tone.
-    const freqVal = deg.floatVal * tonic;
-    const freqTxt = createSVG("text", {
-      x: x,
-      y: centerY + 60,
-      class: "freqLabel"
+// auto-position to avoid overlap
+function positionLabel(cx, cy, text, kind, placedLabels, belowLine=false){
+  ctx.save();
+  let metrics=ctx.measureText(text);
+  let textWidth= metrics.width;
+  let textHeight= (kind==="interval")?30:(kind==="ratio"?32:28);
+
+  let labelY= cy;
+  let step=belowLine?5:-5;
+  let attempts=40;
+  for(let i=0; i<attempts; i++){
+    let x0= cx - textWidth/2;
+    let y0= labelY - textHeight/2;
+    let box={x:x0,y:y0,w:textWidth,h:textHeight};
+    if(!collides(box,placedLabels)){
+      placedLabels.push(box);
+      ctx.restore();
+      return {x:x0,y:y0,w:textWidth,h:textHeight,text,kind};
+    }
+    labelY+= step;
+  }
+  // fallback
+  let x0= cx - textWidth/2;
+  let y0= cy - textHeight/2;
+  placedLabels.push({x:x0,y:y0,w:textWidth,h:textHeight});
+  ctx.restore();
+  return {x:x0,y:y0,w:textWidth,h:textHeight,text,kind};
+}
+
+function collides(box, boxes){
+  for(let b of boxes){
+    if(!(box.x+box.w<b.x||box.x>b.x+b.w||box.y+box.h<b.y||box.y>b.y+b.h)){
+      return true;
+    }
+  }
+  return false;
+}
+
+function drawLabel(label){
+  let {x,y,w,h,text,kind}=label;
+  let cx=x+w/2, cy=y+h/2;
+  ctx.save();
+  if(kind==="interval"){
+    ctx.font="30px Trebuchet MS";
+    ctx.fillStyle="#fffbcc";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(text,cx,cy);
+  }
+  else if(kind==="ratio"){
+    ctx.font="32px Trebuchet MS";
+    ctx.fillStyle="#f0c";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(text,cx,cy);
+    registerClickable(x,y,w,h,(evt)=>{
+      // don't remove unison or octave
+      if(label.degree.floatVal===1.0||label.degree.floatVal===2.0) return;
+      if(confirm(`Delete scale degree "${label.degree.fractionText}"?`)){
+        scaleDegrees= scaleDegrees.filter(d=> d!==label.degree);
+        renderScale();
+      }
     });
-    freqTxt.textContent = freqVal.toFixed(4) + " Hz";
-    freqTxt.addEventListener("click", () => {
+  }
+  else if(kind==="freq"){
+    ctx.font="28px Trebuchet MS";
+    ctx.fillStyle="#0ff";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(text,cx,cy);
+    registerClickable(x,y,w,h,(evt)=>{
+      let freqVal= label.degree.floatVal*tonic;
       playTone(freqVal);
     });
-    svg.appendChild(freqTxt);
-  });
+  }
+  ctx.restore();
 }
 
-// A linear mapping from [1.0..2.0] -> [0..SVG_WIDTH]
-function ratioToX(r) {
-  // fraction (r-1)/1 => 0..1 range
-  const frac = r - 1.0; // e.g. 3/2 => 0.5
-  return frac * SVG_WIDTH; // so 0.0 => 0 px, 1.0 => 1200 px
+// array of clickable bounding boxes
+let clickableRegions=[];
+
+function registerClickable(x,y,w,h,callback){
+  clickableRegions.push({x,y,w,h,callback});
 }
 
-// Return an approximate fraction or short decimal for display
-function fractionStringApprox(value) {
-  // We can just re-use parseFractionOrDecimal in reverse, but let's do a quick approach:
-  // Or do fraction rounding with denominator up to 32:
-  const approx = rationalApprox(value, 32);
-  if (approx.den === 1) return `${approx.num}/1`;
-  return `${approx.num}/${approx.den}`;
-}
-
-// Utility: approximate a float as a fraction up to a given denominator
-function rationalApprox(value, maxDen) {
-  // Farey or continued fraction approach. We'll do a simple approach here:
-  let bestNum = 1, bestDen = 1;
-  let bestError = Math.abs(value - bestNum/bestDen);
-
-  for (let den = 1; den <= maxDen; den++) {
-    let num = Math.round(value * den);
-    let val = num / den;
-    let err = Math.abs(value - val);
-    if (err < bestError) {
-      bestError = err;
-      bestNum = num;
-      bestDen = den;
+// On mousedown => topmost clickable region
+canvas.addEventListener("mousedown", evt=>{
+  let rect=canvas.getBoundingClientRect();
+  let mx= evt.clientX- rect.left;
+  let my= evt.clientY- rect.top;
+  for(let i= clickableRegions.length-1; i>=0; i--){
+    let r= clickableRegions[i];
+    if(mx>=r.x && mx<=r.x+r.w && my>=r.y && my<=r.y+r.h){
+      r.callback(evt);
+      break;
     }
   }
-  return { num: bestNum, den: bestDen };
-}
+});
 
-// Create an SVG element of a given type, setting attributes from an object
-function createSVG(tagName, attrs) {
-  const el = document.createElementNS("http://www.w3.org/2000/svg", tagName);
-  for (const [k, v] of Object.entries(attrs)) {
-    el.setAttribute(k, v.toString());
-  }
-  return el;
-}
+// sound generator
+async function playTone(freq){
+  // try to resume audio if suspended
+  await ensureAudioContextRunning();
 
-//--------------------- AUDIO PLAYBACK ---------------------
-function playTone(freq) {
-  const duration = 1.0;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
-  gain.gain.setValueAtTime(0.3, audioCtx.currentTime); // start amplitude
-  gain.gain.linearRampToValueAtTime(0.0, audioCtx.currentTime + duration);
-
+  const duration=1.0;
+  const osc= audioCtx.createOscillator();
+  const gain= audioCtx.createGain();
+  osc.type="sine";
+  osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
+  
+  gain.gain.setValueAtTime(0.2,audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(0,audioCtx.currentTime+duration);
+  
   osc.connect(gain).connect(audioCtx.destination);
   osc.start();
-  osc.stop(audioCtx.currentTime + duration);
+  osc.stop(audioCtx.currentTime+duration);
 }
 </script>
 </body>
