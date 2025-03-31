@@ -106,8 +106,8 @@
 </div>
 
 <script>
-// We'll store scaleDegrees in [1..2], each is an object:
-//   { fractionText: "3/2", floatVal: 1.5, selected: false }
+// We store scaleDegrees in [1..2]. Each is an object:
+// { fractionText: "3/2", floatVal: 1.5, selected: false }
 let scaleDegrees = [
   { fractionText: "1/1", floatVal: 1.0, selected: false },
   { fractionText: "2/1", floatVal: 2.0, selected: false }
@@ -117,8 +117,8 @@ let tonic = 261.63;
 // Canvas for drawing
 const canvas = document.getElementById("scale-canvas");
 const ctx = canvas.getContext("2d");
-const LEFT_X=100, RIGHT_X=1100; // 1000px range
-const MID_Y= canvas.height/2;
+const LEFT_X = 100, RIGHT_X = 1100; // 1000px range
+const MID_Y = canvas.height / 2;
 const WIDTH = RIGHT_X - LEFT_X;
 
 // Web Audio
@@ -133,63 +133,55 @@ async function ensureAudioContextRunning(){
 window.addEventListener("DOMContentLoaded", init);
 
 function init(){
-  const noteSelect= document.getElementById("noteSelect");
-  const tonicInput= document.getElementById("tonicInput");
-  const setTonicBtn= document.getElementById("setTonicBtn");
-  const intervalInput= document.getElementById("intervalInput");
-  const addIntervalBtn= document.getElementById("addIntervalBtn");
+  const noteSelect = document.getElementById("noteSelect");
+  const tonicInput = document.getElementById("tonicInput");
+  const setTonicBtn = document.getElementById("setTonicBtn");
+  const intervalInput = document.getElementById("intervalInput");
+  const addIntervalBtn = document.getElementById("addIntervalBtn");
 
-  noteSelect.addEventListener("change", ()=>{
+  noteSelect.addEventListener("change", () => {
     tonicInput.value = noteSelect.value;
   });
-  setTonicBtn.addEventListener("click", ()=>{
-    let val= parseFloat(tonicInput.value);
-    if(!isFinite(val)||val<=0){
+  setTonicBtn.addEventListener("click", () => {
+    let val = parseFloat(tonicInput.value);
+    if(!isFinite(val) || val <= 0){
       alert("Tonic must be positive.");
       return;
     }
-    tonic= val;
+    tonic = val;
     renderScale();
   });
-  addIntervalBtn.addEventListener("click", ()=>{
-    let text= intervalInput.value.trim();
+  addIntervalBtn.addEventListener("click", () => {
+    let text = intervalInput.value.trim();
     if(!text){
       alert("Enter ratio, e.g. 3/2 or 1.414");
       return;
     }
-    let r= parseFractionOrDecimal(text);
-    if(!isFinite(r)||r<=1||r>=2){
+    let r = parseFractionOrDecimal(text);
+    if(!isFinite(r) || r <= 1 || r >= 2){
       alert("Ratio must be >1 and <2");
       return;
     }
-    // add if not present
-    let existing= scaleDegrees.some(d=> Math.abs(d.floatVal-r)<1e-7);
+    // Add if not already present
+    let existing = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
     if(!existing){
       scaleDegrees.push({ fractionText: text, floatVal: r, selected: false });
-      scaleDegrees.sort((a,b)=>a.floatVal - b.floatVal);
+      scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
     }
     renderScale();
   });
-
   renderScale();
 }
 
 function parseFractionOrDecimal(s) {
-  // Trim whitespace
   s = s.trim();
-
-  // 1) If it contains '^', assume exponent form like "2^(3/2)" or "2^0.5"
   if (s.includes('^')) {
-    // e.g. "2^(6/12)" => base="2", exponent="(6/12)"
-    // We remove outer parentheses if present
     let match = s.match(/^(.+)\^(.+)$/);
     if (!match) {
-      return NaN; // does not match the pattern base^exponent
+      return NaN;
     }
-    // Extract baseStr & expStr
-    let baseStr = match[1].replace(/^\(+/, '').replace(/\)+$/, ''); 
+    let baseStr = match[1].replace(/^\(+/, '').replace(/\)+$/, '');
     let expStr  = match[2].replace(/^\(+/, '').replace(/\)+$/, '');
-
     let baseVal = parseFractionOrDecimal(baseStr);
     let expVal  = parseFractionOrDecimal(expStr);
     if (!isFinite(baseVal) || !isFinite(expVal)) {
@@ -197,260 +189,239 @@ function parseFractionOrDecimal(s) {
     }
     return Math.pow(baseVal, expVal);
   }
-
-  // 2) If it includes '/', assume fraction form like "3/2" or "12/11"
   if (s.includes('/')) {
-    let [numStr, denStr] = s.split('/');
-    let num = parseFloat(numStr);
-    let den = parseFloat(denStr);
-    if (!isFinite(num) || !isFinite(den) || den === 0) {
-      return NaN;
-    }
+    let parts = s.split('/');
+    if (parts.length !== 2) return NaN;
+    let num = parseFloat(parts[0]);
+    let den = parseFloat(parts[1]);
+    if (!isFinite(num) || !isFinite(den) || den === 0) return NaN;
     return num / den;
   }
-
-  // 3) Otherwise, assume it's a decimal, e.g. "1.414"
-  let val = parseFloat(s);
-  return (isFinite(val)) ? val : NaN;
+  return parseFloat(s);
 }
-
 
 //--- Render scale on canvas
 function renderScale(){
   ctx.clearRect(0,0,canvas.width, canvas.height);
-  clickableRegions=[];
-  scaleDegrees.sort((a,b)=>a.floatVal - b.floatVal);
+  clickableRegions = [];
+  scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
 
-  // Horizontal line
-  ctx.strokeStyle="#0af";
-  ctx.lineWidth=3;
+  // Draw horizontal line
+  ctx.strokeStyle = "#0af";
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(LEFT_X,MID_Y);
-  ctx.lineTo(RIGHT_X,MID_Y);
+  ctx.moveTo(LEFT_X, MID_Y);
+  ctx.lineTo(RIGHT_X, MID_Y);
   ctx.stroke();
 
-  let placedLabels=[]; // bounding boxes for collision detection
-
-  // intervals
-  ctx.font="30px Trebuchet MS";
-  ctx.fillStyle="#fffbcc";
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  for(let i=0; i<scaleDegrees.length-1; i++){
-    let leftVal= scaleDegrees[i].floatVal;
-    let rightVal= scaleDegrees[i+1].floatVal;
-    let gap= rightVal/leftVal;
-    let mid= (leftVal+rightVal)/2;
-    let midX= ratioToX(mid);
-    let gapStr= fractionStringApprox(gap);
-    let lbl= positionLabel(midX, MID_Y-50, gapStr, "interval", placedLabels);
+  let placedLabels = [];
+  // Draw interval labels between adjacent degrees
+  ctx.font = "30px Trebuchet MS";
+  ctx.fillStyle = "#fffbcc";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for(let i = 0; i < scaleDegrees.length - 1; i++){
+    let leftVal = scaleDegrees[i].floatVal;
+    let rightVal = scaleDegrees[i+1].floatVal;
+    let gap = rightVal / leftVal;
+    let mid = (leftVal + rightVal) / 2;
+    let midX = ratioToX(mid);
+    let gapStr = fractionStringApprox(gap);
+    let lbl = positionLabel(midX, MID_Y - 50, gapStr, "interval", placedLabels);
     drawLabel(lbl);
   }
 
-  // each scale degree => vertical tick + ratio label + freq label + check box
+  // Draw each scale degree: tick, ratio label, freq label, and checkbox
   for(let deg of scaleDegrees){
-    let x= ratioToX(deg.floatVal);
-    // tick
-    ctx.strokeStyle="#66b0ff";
-    ctx.lineWidth=2;
+    let x = ratioToX(deg.floatVal);
+    // Tick
+    ctx.strokeStyle = "#66b0ff";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(x,MID_Y-70);
-    ctx.lineTo(x,MID_Y+70);
+    ctx.moveTo(x, MID_Y - 70);
+    ctx.lineTo(x, MID_Y + 70);
     ctx.stroke();
 
-    // ratio label (pink)
-    ctx.font="32px Trebuchet MS";
-    ctx.fillStyle="#f0c";
-    let ratioLbl= positionLabel(x, MID_Y-90, deg.fractionText, "ratio", placedLabels);
-    ratioLbl.degree= deg;
+    // Ratio label (now using 24px font for improved separation)
+    ctx.font = "24px Trebuchet MS";
+    ctx.fillStyle = "#f0c";
+    let ratioLbl = positionLabel(x, MID_Y - 90, deg.fractionText, "ratio", placedLabels);
+    ratioLbl.degree = deg;
     drawLabel(ratioLbl);
 
-    // freq label (cyan)
-    ctx.font="28px Trebuchet MS";
-    ctx.fillStyle="#0ff";
-    let freqVal= deg.floatVal*tonic;
-    let freqStr= freqVal.toFixed(4)+" Hz";
-    let freqLbl= positionLabel(x, MID_Y+90, freqStr, "freq", placedLabels, true);
-    freqLbl.degree= deg;
+    // Frequency label (28px cyan)
+    ctx.font = "28px Trebuchet MS";
+    ctx.fillStyle = "#0ff";
+    let freqVal = deg.floatVal * tonic;
+    let freqStr = freqVal.toFixed(4) + " Hz";
+    let freqLbl = positionLabel(x, MID_Y + 90, freqStr, "freq", placedLabels, true);
+    freqLbl.degree = deg;
     drawLabel(freqLbl);
 
-    // A small check box above ratio label => toggles deg.selected
-    let checkBoxSize= 20;
-    let checkBoxX= x - (checkBoxSize/2);
-    let checkBoxY= ratioLbl.y - 30; // 30px above ratio label
-    // store bounding for clickable
-    registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, (evt)=>{
-      deg.selected= !deg.selected;
+    // Checkbox above ratio label to toggle selection
+    let checkBoxSize = 20;
+    let checkBoxX = x - (checkBoxSize / 2);
+    let checkBoxY = ratioLbl.y - 30; // 30px above ratio label
+    registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, (evt) => {
+      deg.selected = !deg.selected;
       renderScale();
     });
-    // Then draw the box
     ctx.save();
-    ctx.strokeStyle="#f0c";
-    ctx.lineWidth=2;
-    ctx.strokeRect(checkBoxX,checkBoxY,checkBoxSize,checkBoxSize);
+    ctx.strokeStyle = "#f0c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize);
     if(deg.selected){
-      // draw an X
       ctx.beginPath();
-      ctx.moveTo(checkBoxX,checkBoxY);
-      ctx.lineTo(checkBoxX+checkBoxSize, checkBoxY+checkBoxSize);
-      ctx.moveTo(checkBoxX+checkBoxSize,checkBoxY);
-      ctx.lineTo(checkBoxX, checkBoxY+checkBoxSize);
+      ctx.moveTo(checkBoxX, checkBoxY);
+      ctx.lineTo(checkBoxX + checkBoxSize, checkBoxY + checkBoxSize);
+      ctx.moveTo(checkBoxX + checkBoxSize, checkBoxY);
+      ctx.lineTo(checkBoxX, checkBoxY + checkBoxSize);
       ctx.stroke();
     }
     ctx.restore();
   }
 }
 
-// ratio => x
-function ratioToX(r){
-  return LEFT_X + (r-1)*WIDTH;
+// Convert ratio [1,2] to x coordinate in [LEFT_X, RIGHT_X]
+function ratioToX(r) {
+  return LEFT_X + (r - 1) * WIDTH;
 }
 
-function fractionStringApprox(value){
-  let bestNum=1, bestDen=1, bestErr= Math.abs(value-1.0);
-  for(let den=1; den<=32; den++){
-    let num= Math.round(value*den);
-    let err= Math.abs(value- num/den);
-    if(err<bestErr){
-      bestErr= err; bestNum=num; bestDen=den;
+// Compute approximate fraction with denominator <= 32; add "~" if approximation error > 0.01.
+function fractionStringApprox(value) {
+  let bestNum = 1, bestDen = 1;
+  let bestErr = Math.abs(value - (bestNum / bestDen));
+  for (let den = 1; den <= 32; den++) {
+    let num = Math.round(value * den);
+    let err = Math.abs(value - (num / den));
+    if (err < bestErr) {
+      bestErr = err;
+      bestNum = num;
+      bestDen = den;
     }
   }
-  return bestNum+"/"+bestDen;
+  let fracStr = bestNum + "/" + bestDen;
+  if (bestErr > 0.01) {
+    fracStr = "~" + fracStr;
+  }
+  return fracStr;
 }
 
-// text auto-position to avoid overlap
-function positionLabel(cx,cy,text,kind, placedLabels, belowLine=false){
-  let metrics= ctx.measureText(text);
-  let textWidth= metrics.width;
-  let textHeight= (kind==="interval"?30:(kind==="ratio"?32:28));
-  let labelY= cy;
-  let step= belowLine?5:-5;
-  let attempts=40;
-  for(let i=0;i<attempts;i++){
-    let x0= cx-(textWidth/2);
-    let y0= labelY-(textHeight/2);
-    let box={x:x0,y:y0,w:textWidth,h:textHeight};
-    if(!collides(box,placedLabels)){
+// Auto-position text to avoid overlap
+function positionLabel(cx, cy, text, kind, placedLabels, belowLine = false) {
+  let metrics = ctx.measureText(text);
+  // For "interval" we keep 30px; for "ratio", use 24px; for "freq", use 28px.
+  let textHeight = (kind === "interval" ? 30 : (kind === "ratio" ? 24 : 28));
+  let textWidth = metrics.width;
+  let labelY = cy;
+  let step = belowLine ? 5 : -5;
+  let attempts = 40;
+  for (let i = 0; i < attempts; i++) {
+    let x0 = cx - textWidth / 2;
+    let y0 = labelY - textHeight / 2;
+    let box = { x: x0, y: y0, w: textWidth, h: textHeight };
+    if (!collides(box, placedLabels)) {
       placedLabels.push(box);
-      return {x:x0,y:y0,w:textWidth,h:textHeight,text,kind};
+      return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
     }
-    labelY+= step;
+    labelY += step;
   }
-  // fallback
-  let x0= cx-(textWidth/2);
-  let y0= cy-(textHeight/2);
-  placedLabels.push({x:x0,y:y0,w:textWidth,h:textHeight});
-  return {x:x0,y:y0,w:textWidth,h:textHeight,text,kind};
+  let x0 = cx - textWidth / 2;
+  let y0 = cy - textHeight / 2;
+  placedLabels.push({ x: x0, y: y0, w: textWidth, h: textHeight });
+  return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
 }
 
-function collides(box, boxes){
-  for(let b of boxes){
-    if(!(box.x+box.w<b.x||box.x>b.x+b.w||box.y+box.h<b.y||box.y>b.y+b.h)){
+function collides(box, boxes) {
+  for (let b of boxes) {
+    if (!(box.x + box.w < b.x || box.x > b.x + b.w || box.y + box.h < b.y || box.y > b.y + b.h)) {
       return true;
     }
   }
   return false;
 }
 
-// label => draw text, register clickable if ratio/freq
-function drawLabel(label){
-  let {x,y,w,h,text,kind}= label;
-  let cx= x+w/2, cy= y+h/2;
+// Draw label text and register click handlers if applicable
+function drawLabel(label) {
+  let { x, y, w, h, text, kind } = label;
+  let cx = x + w / 2, cy = y + h / 2;
   ctx.save();
-  if(kind==="interval"){
-    ctx.font="30px Trebuchet MS";
-    ctx.fillStyle="#fffbcc";
-    ctx.textAlign="center";
-    ctx.textBaseline="middle";
-    ctx.fillText(text,cx,cy);
-  }
-  else if(kind==="ratio"){
-    ctx.font="32px Trebuchet MS";
-    ctx.fillStyle="#f0c";
-    ctx.textAlign="center";
-    ctx.textBaseline="middle";
-    ctx.fillText(text,cx,cy);
-    // clickable remove, except for 1/1 or 2/1
-    registerClickable(x,y,w,h,(evt)=>{
-      if(label.degree.floatVal===1.0||label.degree.floatVal===2.0)return;
-      let ok= confirm(`Delete "${label.degree.fractionText}"?`);
-      if(ok){
-        scaleDegrees= scaleDegrees.filter(d=> d!==label.degree);
+  if (kind === "interval") {
+    ctx.font = "30px Trebuchet MS";
+    ctx.fillStyle = "#fffbcc";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, cx, cy);
+  } else if (kind === "ratio") {
+    ctx.font = "24px Trebuchet MS";
+    ctx.fillStyle = "#f0c";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, cx, cy);
+    registerClickable(x, y, w, h, (evt) => {
+      if (label.degree.floatVal === 1.0 || label.degree.floatVal === 2.0) return;
+      let ok = confirm(`Delete "${label.degree.fractionText}"?`);
+      if (ok) {
+        scaleDegrees = scaleDegrees.filter(d => d !== label.degree);
         renderScale();
       }
     });
-  }
-  else if(kind==="freq"){
-    ctx.font="28px Trebuchet MS";
-    ctx.fillStyle="#0ff";
-    ctx.textAlign="center";
-    ctx.textBaseline="middle";
-    ctx.fillText(text,cx,cy);
-    // clicking => play that note + all selected notes
-    registerClickable(x,y,w,h,(evt)=>{
-      let baseDeg= label.degree; 
-      let freq= baseDeg.floatVal * tonic;
-      let checkedDegrees= scaleDegrees.filter(d=> d.selected && d!==baseDeg);
-      let allFreqs= [freq, ...checkedDegrees.map(d=> d.floatVal*tonic)];
+  } else if (kind === "freq") {
+    ctx.font = "28px Trebuchet MS";
+    ctx.fillStyle = "#0ff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, cx, cy);
+    registerClickable(x, y, w, h, (evt) => {
+      let baseDeg = label.degree;
+      let freq = baseDeg.floatVal * tonic;
+      let checkedDegrees = scaleDegrees.filter(d => d.selected && d !== baseDeg);
+      let allFreqs = [freq, ...checkedDegrees.map(d => d.floatVal * tonic)];
       playNotes(allFreqs);
     });
   }
   ctx.restore();
 }
 
-// bounding boxes we check for topmost click
-let clickableRegions=[];
-function registerClickable(x,y,w,h,callback){
-  clickableRegions.push({x,y,w,h,callback});
+// Global array for clickable regions
+let clickableRegions = [];
+function registerClickable(x, y, w, h, callback) {
+  clickableRegions.push({ x, y, w, h, callback });
 }
-canvas.addEventListener("mousedown",(evt)=>{
-  let rect= canvas.getBoundingClientRect();
-  let mx= evt.clientX- rect.left;
-  let my= evt.clientY- rect.top;
-  // check from top to bottom
-  for(let i=clickableRegions.length-1; i>=0; i--){
-    let r= clickableRegions[i];
-    if(mx>=r.x && mx<=r.x+r.w && my>=r.y && my<=r.y+r.h){
+canvas.addEventListener("mousedown", (evt) => {
+  let rect = canvas.getBoundingClientRect();
+  let mx = evt.clientX - rect.left;
+  let my = evt.clientY - rect.top;
+  for (let i = clickableRegions.length - 1; i >= 0; i--) {
+    let r = clickableRegions[i];
+    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
       r.callback(evt);
       break;
     }
   }
 });
 
-//--- Play multiple notes at once, with freq-based normalization & triangle waveform
-async function playNotes(freqArray){
-  // ensure audio context is running
-  if(audioCtx.state==="suspended"){
+//--- Play multiple notes simultaneously with normalization and triangle waveform
+async function playNotes(freqArray) {
+  if (audioCtx.state === "suspended") {
     await audioCtx.resume();
   }
-  const n= freqArray.length;
-  if(n<1) return;
-
-  // We'll keep total amplitude ~0.2, but also apply a freq-based weighting:
-  // amplitude = (0.2 / n) * sqrt(440 / freq), clamped
-  const maxAmp = 0.8;    // to avoid extreme loudness if freq is super low
+  let n = freqArray.length;
+  if (n < 1) return;
+  const maxAmp = 0.8;
   const duration = 1.0;
   const now = audioCtx.currentTime;
-
-  for(let freq of freqArray){
+  for (let freq of freqArray) {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-
-    // Use a triangle waveform for a richer timbre
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
-
-    // freq-based weighting example
-    // higher freq => bigger factor, so it won't sound too quiet
-    let baseAmplitude = 0.2 / n;  
-    let freqWeight = Math.sqrt(440 / freq); 
+    let baseAmplitude = 0.2 / n;
+    let freqWeight = Math.sqrt(440 / freq);
     let finalAmp = baseAmplitude * freqWeight;
-    if(finalAmp > maxAmp) finalAmp = maxAmp;
-
+    if (finalAmp > maxAmp) finalAmp = maxAmp;
     gain.gain.setValueAtTime(finalAmp, now);
-    // fade out linearly over 1 second
     gain.gain.linearRampToValueAtTime(0, now + duration);
-
     osc.connect(gain).connect(audioCtx.destination);
     osc.start(now);
     osc.stop(now + duration);
