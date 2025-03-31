@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Scale Workshop – Full-Width Canvas, 50% Viewport Height</title>
+<title>Scale Workshop – Clear & Play Scale</title>
 <style>
   body {
-    margin: 0;
+    margin: 0; 
     padding: 0;
-    background: #0b0f1a;
+    background: #0b0f1a; 
     color: #e0e0e0;
     font-family: "Trebuchet MS", Arial, sans-serif;
   }
@@ -20,7 +20,57 @@
     font-size: 1.3rem;
   }
 
-  /* Container: full width */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  label, select, input, button {
+    font-size: 1.0rem;
+  }
+  input[type="number"], input[type="text"] {
+    padding: 5px;
+    width: 90px;
+    border: 1px solid #444;
+    background: #101828;
+    color: #ccffff;
+    outline: none;
+    border-radius: 0; /* right angles */
+  }
+  select {
+    padding: 5px;
+    border: 1px solid #333;
+    background: #101828;
+    color: #99ffff;
+    border-radius: 0;
+  }
+
+  /* Tron-like custom buttons */
+  button {
+    background: #0fd2ba;
+    color: #002;
+    font-weight: bold;
+    border: 2px solid #09aa9a;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    box-shadow: 2px 2px 4px #000;
+    border-radius: 0; /* right angles */
+  }
+  button:hover {
+    background: #00ffe0;
+    color: #002;
+  }
+  button:disabled {
+    background: #444;
+    color: #999;
+    border-color: #666;
+    cursor: not-allowed;
+  }
+
+  /* Canvas container, full width, half the viewport height */
   #canvas-container {
     width: 100%;
     margin: 0;
@@ -29,39 +79,24 @@
     border: 2px solid #09aa9a;
     box-sizing: border-box;
   }
-
-  /* Canvas: 100% width, fixed height = 50% of the viewport */
   #scale-canvas {
     display: block;
     width: 100%;
-    height: 50vh; /* Half of browser’s visible height */
+    height: 50vh; /* half the viewport height */
     background: #0b0f1a;
     border: 1px solid #09aa9a;
-  }
-
-  .controls {
-    padding: 1rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-  label, button, input, select {
-    font-size: 1rem;
   }
 </style>
 </head>
 <body>
-
 <header>
-  <h1>Scale Workshop – 100% Width, 50% Height</h1>
+  <h1>Scale Workshop – Checkboxes & Frequency-Based Normalization</h1>
 </header>
 
 <div class="controls">
   <label>Tonic Frequency:</label>
   <input id="tonicInput" type="number" value="261.63" step="0.01" />
   <select id="noteSelect">
-    <option value="98">G2 (~98 Hz)</option>
-    <option value="196">G3 (~196 Hz)</option>
     <option value="220">A3 (~220 Hz)</option>
     <option value="246.94">B3 (~246.94 Hz)</option>
     <option value="261.63" selected>C4 (~261.63 Hz)</option>
@@ -70,60 +105,102 @@
     <option value="349.23">F4 (~349.23 Hz)</option>
     <option value="392.0">G4 (392 Hz)</option>
     <option value="440.0">A4 (440 Hz)</option>
-    
+    <option value="493.88">B4 (~493.88 Hz)</option>
   </select>
   <button id="setTonicBtn">Set Tonic</button>
 
   <label>New Interval (1 < x < 2):</label>
   <input id="intervalInput" type="text" placeholder="3/2 or 1.414" />
   <button id="addIntervalBtn">Add Interval</button>
+
+  <!-- NEW buttons -->
+  <button id="playScaleBtn">Play Scale</button>
+  <button id="clearAllBtn">Clear All</button>
 </div>
 
 <div id="canvas-container">
-  <!-- No fixed width/height attributes here -->
+  <!-- No fixed width/height in HTML; let CSS handle it -->
   <canvas id="scale-canvas"></canvas>
 </div>
 
 <script>
-// Scale degrees in [1..2] => { fractionText, floatVal, selected: bool }
+//------------------------ Data & Audio Setup ------------------------
 let scaleDegrees = [
   { fractionText: "1/1", floatVal: 1.0, selected: false },
   { fractionText: "2/1", floatVal: 2.0, selected: false }
 ];
 let tonic = 261.63;
 
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function parseFractionOrDecimal(s) {
+  s = s.trim();
+  if (s.includes('^')) {
+    let match = s.match(/^(.+)\^(.+)$/);
+    if(!match) return NaN;
+    let baseStr = match[1].replace(/^\(+/, '').replace(/\)+$/, '');
+    let expStr  = match[2].replace(/^\(+/, '').replace(/\)+$/, '');
+    let baseVal = parseFractionOrDecimal(baseStr);
+    let expVal  = parseFractionOrDecimal(expStr);
+    if(!isFinite(baseVal) || !isFinite(expVal)) {
+      return NaN;
+    }
+    return Math.pow(baseVal, expVal);
+  }
+  if (s.includes('/')) {
+    let parts = s.split('/');
+    if (parts.length !== 2) return NaN;
+    let num = parseFloat(parts[0]);
+    let den = parseFloat(parts[1]);
+    if(!isFinite(num) || !isFinite(den) || den === 0) return NaN;
+    return num / den;
+  }
+  return parseFloat(s);
+}
+
+//------------------------ Canvas + Drawing Setup ------------------------
 const canvas = document.getElementById("scale-canvas");
 const ctx = canvas.getContext("2d");
+let clickableRegions = [];
 
-// On window resize, re-match the internal canvas size to its new CSS size & redraw
+// Make internal canvas size match CSS size
+function resizeCanvas() {
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+}
+
+// On window resize, recalc and redraw
 window.addEventListener("resize", () => {
   resizeCanvas();
   renderScale();
 });
+
+//------------------------ Lifecycle ------------------------
 window.addEventListener("DOMContentLoaded", init);
 
-// Set up event handlers, do initial render
-function init(){
+function init() {
+  // UI references
   const noteSelect = document.getElementById("noteSelect");
   const tonicInput = document.getElementById("tonicInput");
   const setTonicBtn = document.getElementById("setTonicBtn");
   const intervalInput = document.getElementById("intervalInput");
   const addIntervalBtn = document.getElementById("addIntervalBtn");
+  const playScaleBtn = document.getElementById("playScaleBtn");
+  const clearAllBtn = document.getElementById("clearAllBtn");
 
+  // Event handlers
   noteSelect.addEventListener("change", () => {
     tonicInput.value = noteSelect.value;
   });
-
   setTonicBtn.addEventListener("click", () => {
     let val = parseFloat(tonicInput.value);
-    if (!isFinite(val) || val <= 0){
+    if(!isFinite(val) || val <= 0){
       alert("Tonic must be positive.");
       return;
     }
     tonic = val;
     renderScale();
   });
-
   addIntervalBtn.addEventListener("click", () => {
     let text = intervalInput.value.trim();
     if(!text){
@@ -136,66 +213,53 @@ function init(){
       return;
     }
     // Add if not already present
-    let existing = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
-    if(!existing){
+    let exists = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
+    if(!exists){
       scaleDegrees.push({ fractionText: text, floatVal: r, selected: false });
       scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
     }
     renderScale();
   });
 
-  // Once at startup
+  // NEW: Clear All -> remove everything but 1/1 and 2/1
+  clearAllBtn.addEventListener("click", () => {
+    scaleDegrees = scaleDegrees.filter(d => 
+      d.floatVal === 1.0 || d.floatVal === 2.0
+    );
+    renderScale();
+  });
+
+  // NEW: Play Scale -> play all notes 1/1..2/1 in ascending order
+  playScaleBtn.addEventListener("click", async () => {
+    if(isPlaying) return; // skip if currently playing
+    isPlaying = true;
+    setControlsEnabled(false);
+
+    await playScaleOnce();
+
+    setControlsEnabled(true);
+    isPlaying = false;
+  });
+
+  // Start
   resizeCanvas();
   renderScale();
 }
 
-// Make the internal pixel size match the CSS size
-function resizeCanvas() {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-}
-
-// Parse fraction or decimal input
-function parseFractionOrDecimal(s) {
-  s = s.trim();
-  if (s.includes('^')) {
-    let match = s.match(/^(.+)\^(.+)$/);
-    if(!match) return NaN;
-    let baseStr = match[1].replace(/^\(+/, '').replace(/\)+$/, '');
-    let expStr  = match[2].replace(/^\(+/, '').replace(/\)+$/, '');
-    let baseVal = parseFractionOrDecimal(baseStr);
-    let expVal  = parseFractionOrDecimal(expStr);
-    if (!isFinite(baseVal) || !isFinite(expVal)) {
-      return NaN;
-    }
-    return Math.pow(baseVal, expVal);
-  }
-  if (s.includes('/')) {
-    let parts = s.split('/');
-    if (parts.length !== 2) return NaN;
-    let num = parseFloat(parts[0]);
-    let den = parseFloat(parts[1]);
-    if (!isFinite(num) || !isFinite(den) || den === 0) return NaN;
-    return num / den;
-  }
-  return parseFloat(s);
-}
-
-// Clickable regions for checkboxes/labels
-let clickableRegions = [];
-
+//------------------------ Rendering ------------------------
 function renderScale() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   clickableRegions = [];
+
   scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
 
-  // We can define left/right boundaries based on a percentage of the new width
+  // map [1..2] -> [LEFT_X..RIGHT_X]
   const LEFT_X = 0.08 * canvas.width;
   const RIGHT_X = 0.92 * canvas.width;
   const MID_Y = canvas.height / 2;
   const WIDTH = RIGHT_X - LEFT_X;
 
-  // Draw the horizontal line
+  // horizontal line
   ctx.strokeStyle = "#0af";
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -205,28 +269,27 @@ function renderScale() {
 
   let placedLabels = [];
 
-  // Intervals between adjacent degrees
+  // interval labels (between adjacent scaleDegrees)
   ctx.font = "30px Trebuchet MS";
   ctx.fillStyle = "#fffbcc";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
   for(let i = 0; i < scaleDegrees.length - 1; i++){
     let leftVal = scaleDegrees[i].floatVal;
     let rightVal = scaleDegrees[i+1].floatVal;
     let gap = rightVal / leftVal;
-    let mid = (leftVal + rightVal) / 2;
+    let mid = (leftVal + rightVal)/2;
     let midX = ratioToX(mid, LEFT_X, WIDTH);
     let gapStr = fractionStringApprox(gap);
     let lbl = positionLabel(midX, MID_Y - 50, gapStr, "interval", placedLabels);
     drawLabel(lbl);
   }
 
-  // Each scale degree: tick, ratio label, freq label, checkbox
+  // each scale degree
   for(let deg of scaleDegrees){
     let x = ratioToX(deg.floatVal, LEFT_X, WIDTH);
 
-    // Tick line
+    // tick
     ctx.strokeStyle = "#66b0ff";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -234,14 +297,14 @@ function renderScale() {
     ctx.lineTo(x, MID_Y + 70);
     ctx.stroke();
 
-    // Ratio label
+    // ratio label
     ctx.font = "24px Trebuchet MS";
     ctx.fillStyle = "#f0c";
     let ratioLbl = positionLabel(x, MID_Y - 90, deg.fractionText, "ratio", placedLabels);
     ratioLbl.degree = deg;
     drawLabel(ratioLbl);
 
-    // Frequency label
+    // freq label
     ctx.font = "28px Trebuchet MS";
     ctx.fillStyle = "#0ff";
     let freqVal = deg.floatVal * tonic;
@@ -250,7 +313,7 @@ function renderScale() {
     freqLbl.degree = deg;
     drawLabel(freqLbl);
 
-    // Checkbox
+    // checkbox
     let checkBoxSize = 20;
     let checkBoxX = x - (checkBoxSize / 2);
     let checkBoxY = ratioLbl.y - 30;
@@ -274,19 +337,18 @@ function renderScale() {
   }
 }
 
-// ratio [1..2] => x in [LEFT_X..(LEFT_X + WIDTH)]
+// ratio [1..2] => x in [leftX..(leftX+width)]
 function ratioToX(r, leftX, width) {
-  let t = (r - 1) / (2 - 1); // normalized 0..1
+  let t = (r - 1)/(2 - 1); // 0..1
   return leftX + t * width;
 }
 
-// Approx fraction for label
 function fractionStringApprox(value) {
   let bestNum = 1, bestDen = 1;
   let bestErr = Math.abs(value - (bestNum / bestDen));
   for (let den = 1; den <= 32; den++) {
     let num = Math.round(value * den);
-    let err = Math.abs(value - num / den);
+    let err = Math.abs(value - (num / den));
     if (err < bestErr) {
       bestErr = err;
       bestNum = num;
@@ -298,53 +360,52 @@ function fractionStringApprox(value) {
   return fracStr;
 }
 
-// Attempt to avoid overlapping text labels
+// place text labels so they avoid overlap if possible
 function positionLabel(cx, cy, text, kind, placedLabels, belowLine = false) {
   let metrics = ctx.measureText(text);
-  let textHeight = kind === "interval" ? 30 : (kind === "ratio" ? 24 : 28);
+  let textHeight = (kind === "interval" ? 30 : (kind === "ratio" ? 24 : 28));
   let textWidth = metrics.width;
   let labelY = cy;
   let step = belowLine ? 5 : -5;
   let attempts = 40;
-  for (let i = 0; i < attempts; i++) {
-    let x0 = cx - textWidth / 2;
-    let y0 = labelY - textHeight / 2;
+  for(let i=0; i<attempts; i++){
+    let x0 = cx - textWidth/2;
+    let y0 = labelY - textHeight/2;
     let box = { x: x0, y: y0, w: textWidth, h: textHeight };
-    if (!collides(box, placedLabels)) {
+    if(!collides(box, placedLabels)){
       placedLabels.push(box);
       return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
     }
     labelY += step;
   }
-  let x0 = cx - textWidth / 2;
-  let y0 = cy - textHeight / 2;
+  // fallback
+  let x0 = cx - textWidth/2;
+  let y0 = cy - textHeight/2;
   placedLabels.push({ x: x0, y: y0, w: textWidth, h: textHeight });
   return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
 }
 
 function collides(box, boxes) {
-  for (let b of boxes) {
-    if (!(box.x + box.w < b.x || box.x > b.x + b.w ||
-          box.y + box.h < b.y || box.y > b.y + b.h)) {
+  for(let b of boxes){
+    if(!(box.x+box.w < b.x || box.x > b.x+b.w ||
+         box.y+box.h < b.y || box.y > b.y+b.h)){
       return true;
     }
   }
   return false;
 }
 
-// Draw text & handle clicks
 function drawLabel(label) {
   let { x, y, w, h, text, kind } = label;
-  let cx = x + w / 2, cy = y + h / 2;
-
+  let cx = x + w/2, cy = y + h/2;
   ctx.save();
-  if (kind === "interval") {
+  if(kind === "interval"){
     ctx.font = "30px Trebuchet MS";
     ctx.fillStyle = "#fffbcc";
-  } else if (kind === "ratio") {
+  } else if(kind === "ratio"){
     ctx.font = "24px Trebuchet MS";
     ctx.fillStyle = "#f0c";
-  } else if (kind === "freq") {
+  } else if(kind === "freq"){
     ctx.font = "28px Trebuchet MS";
     ctx.fillStyle = "#0ff";
   }
@@ -353,29 +414,28 @@ function drawLabel(label) {
   ctx.fillText(text, cx, cy);
   ctx.restore();
 
-  // Register click for ratio/freq labels
-  if (kind === "ratio") {
+  // add click for ratio/freq label
+  if(kind === "ratio"){
     registerClickable(x, y, w, h, () => {
-      if (label.degree.floatVal === 1.0 || label.degree.floatVal === 2.0) return;
+      if(label.degree.floatVal === 1.0 || label.degree.floatVal === 2.0) return;
       let ok = confirm(`Delete "${label.degree.fractionText}"?`);
-      if (ok) {
+      if(ok){
         scaleDegrees = scaleDegrees.filter(d => d !== label.degree);
         renderScale();
       }
     });
-  }
-  else if (kind === "freq") {
+  } else if(kind === "freq"){
     registerClickable(x, y, w, h, () => {
       let baseDeg = label.degree;
       let freq = baseDeg.floatVal * tonic;
-      let checkedDegrees = scaleDegrees.filter(d => d.selected && d !== baseDeg);
-      let allFreqs = [freq, ...checkedDegrees.map(d => d.floatVal * tonic)];
+      let checked = scaleDegrees.filter(d => d.selected && d !== baseDeg);
+      let allFreqs = [freq, ...checked.map(d => d.floatVal * tonic)];
       playNotes(allFreqs);
     });
   }
 }
 
-// For checkbox, ratio/freq label clicks
+//------------------------ Clickable Regions ------------------------
 function registerClickable(x, y, w, h, callback) {
   clickableRegions.push({ x, y, w, h, callback });
 }
@@ -383,26 +443,79 @@ canvas.addEventListener("mousedown", evt => {
   let rect = canvas.getBoundingClientRect();
   let mx = evt.clientX - rect.left;
   let my = evt.clientY - rect.top;
-  for (let i = clickableRegions.length - 1; i >= 0; i--) {
+  for(let i = clickableRegions.length - 1; i >= 0; i--){
     let r = clickableRegions[i];
-    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+    if(mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h){
       r.callback(evt);
       break;
     }
   }
 });
 
-// Web Audio
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+//------------------------ Playing Notes ------------------------
+let isPlaying = false;
+
+function setControlsEnabled(enabled) {
+  // Disable all buttons/inputs/selects in the .controls bar
+  document.querySelectorAll('.controls button, .controls input, .controls select')
+    .forEach(elem => {
+      elem.disabled = !enabled;
+    });
+}
+
+async function playScaleOnce() {
+  // Sort ascending
+  let sorted = [...scaleDegrees].sort((a,b) => a.floatVal - b.floatVal);
+  // Duration per note
+  let noteDur = 1.0; // seconds
+  for(let deg of sorted){
+    let freq = deg.floatVal * tonic;
+    await playOneNoteSequential(freq, noteDur);
+  }
+}
+
+/** Play a single note for the given duration, returning a Promise when it ends. */
+function playOneNoteSequential(freq, duration){
+  return new Promise(async (resolve) => {
+    if(audioCtx.state === "suspended"){
+      await audioCtx.resume();
+    }
+    let now = audioCtx.currentTime;
+    let osc = audioCtx.createOscillator();
+    let gain = audioCtx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, now);
+
+    // simple amplitude logic
+    const maxAmp = 0.8;
+    let baseAmplitude = 0.2;
+    let freqWeight = Math.sqrt(440 / freq);
+    let finalAmp = baseAmplitude * freqWeight;
+    if(finalAmp > maxAmp) finalAmp = maxAmp;
+    gain.gain.setValueAtTime(finalAmp, now);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    // End event
+    osc.onended = () => resolve();
+
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + duration);
+  });
+}
+
+/** Play multiple notes simultaneously (as before) */
 async function playNotes(freqArray) {
   if (audioCtx.state === "suspended") {
     await audioCtx.resume();
   }
-  const n = freqArray.length;
+  let n = freqArray.length;
   if (n < 1) return;
+
   const maxAmp = 0.8;
   const duration = 1.0;
   const now = audioCtx.currentTime;
+
   for (let freq of freqArray) {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -412,7 +525,7 @@ async function playNotes(freqArray) {
     let baseAmplitude = 0.2 / n;
     let freqWeight = Math.sqrt(440 / freq);
     let finalAmp = baseAmplitude * freqWeight;
-    if (finalAmp > maxAmp) finalAmp = maxAmp;
+    if(finalAmp > maxAmp) finalAmp = maxAmp;
     gain.gain.setValueAtTime(finalAmp, now);
     gain.gain.linearRampToValueAtTime(0, now + duration);
 
