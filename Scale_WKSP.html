@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Scale Workshop – Checkboxes & Frequency-Based Normalization (Triangle Wave)</title>
+<title>Scale Workshop – Full-Width Canvas, 50% Viewport Height</title>
 <style>
-  /* Tron-like styling with right-angle corners */
   body {
-    margin: 0; padding: 0;
-    background: #0b0f1a; 
+    margin: 0;
+    padding: 0;
+    background: #0b0f1a;
     color: #e0e0e0;
     font-family: "Trebuchet MS", Arial, sans-serif;
   }
@@ -19,71 +19,49 @@
     border-bottom: 2px solid #09aa9a;
     font-size: 1.3rem;
   }
-  .controls {
-    margin: 1rem;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1rem;
-  }
-  label, select, input, button {
-    font-size: 1.0rem;
-  }
-  input[type="number"], input[type="text"] {
-    padding: 5px;
-    width: 90px;
-    border: 1px solid #444;
-    background: #101828;
-    color: #ccffff;
-    outline: none;
-    border-radius: 0; /* right-angles */
-  }
-  select {
-    padding: 5px;
-    border: 1px solid #333;
-    background: #101828;
-    color: #99ffff;
-    border-radius: 0;
-  }
-  button {
-    background: #0fd2ba;
-    color: #002;
-    font-weight: bold;
-    border: none;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    box-shadow: 2px 2px 4px #000;
-    border-radius: 0;
-  }
-  button:hover {
-    background: #0aa;
-    color: #fff;
-  }
 
-  /* Canvas container, Tron border */
+  /* Container: full width */
   #canvas-container {
-    margin: 1rem auto;
-    padding: 0.5rem;
+    width: 100%;
+    margin: 0;
+    padding: 1rem;
     background: #142030;
     border: 2px solid #09aa9a;
-    width: 1200px; 
+    box-sizing: border-box;
   }
+
+  /* Canvas: 100% width, fixed height = 50% of the viewport */
   #scale-canvas {
     display: block;
+    width: 100%;
+    height: 50vh; /* Half of browser’s visible height */
     background: #0b0f1a;
     border: 1px solid #09aa9a;
+  }
+
+  .controls {
+    padding: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  label, button, input, select {
+    font-size: 1rem;
   }
 </style>
 </head>
 <body>
+
 <header>
-  <h1>Scale Workshop – Checkboxes & Frequency-Based Normalization (Triangle Wave)</h1>
+  <h1>Scale Workshop – 100% Width, 50% Height</h1>
 </header>
 
 <div class="controls">
   <label>Tonic Frequency:</label>
   <input id="tonicInput" type="number" value="261.63" step="0.01" />
   <select id="noteSelect">
+    <option value="98">G2 (~98 Hz)</option>
+    <option value="196">G3 (~196 Hz)</option>
     <option value="220">A3 (~220 Hz)</option>
     <option value="246.94">B3 (~246.94 Hz)</option>
     <option value="261.63" selected>C4 (~261.63 Hz)</option>
@@ -92,7 +70,7 @@
     <option value="349.23">F4 (~349.23 Hz)</option>
     <option value="392.0">G4 (392 Hz)</option>
     <option value="440.0">A4 (440 Hz)</option>
-    <option value="493.88">B4 (~493.88 Hz)</option>
+    
   </select>
   <button id="setTonicBtn">Set Tonic</button>
 
@@ -102,36 +80,29 @@
 </div>
 
 <div id="canvas-container">
-  <canvas id="scale-canvas" width="1200" height="600"></canvas>
+  <!-- No fixed width/height attributes here -->
+  <canvas id="scale-canvas"></canvas>
 </div>
 
 <script>
-// We store scaleDegrees in [1..2]. Each is an object:
-// { fractionText: "3/2", floatVal: 1.5, selected: false }
+// Scale degrees in [1..2] => { fractionText, floatVal, selected: bool }
 let scaleDegrees = [
   { fractionText: "1/1", floatVal: 1.0, selected: false },
   { fractionText: "2/1", floatVal: 2.0, selected: false }
 ];
 let tonic = 261.63;
 
-// Canvas for drawing
 const canvas = document.getElementById("scale-canvas");
 const ctx = canvas.getContext("2d");
-const LEFT_X = 100, RIGHT_X = 1100; // 1000px range
-const MID_Y = canvas.height / 2;
-const WIDTH = RIGHT_X - LEFT_X;
 
-// Web Audio
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-async function ensureAudioContextRunning(){
-  if(audioCtx.state === "suspended"){
-    try { await audioCtx.resume(); } catch(e){ console.log(e); }
-  }
-}
-
-//--- Setup UI
+// On window resize, re-match the internal canvas size to its new CSS size & redraw
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  renderScale();
+});
 window.addEventListener("DOMContentLoaded", init);
 
+// Set up event handlers, do initial render
 function init(){
   const noteSelect = document.getElementById("noteSelect");
   const tonicInput = document.getElementById("tonicInput");
@@ -142,15 +113,17 @@ function init(){
   noteSelect.addEventListener("change", () => {
     tonicInput.value = noteSelect.value;
   });
+
   setTonicBtn.addEventListener("click", () => {
     let val = parseFloat(tonicInput.value);
-    if(!isFinite(val) || val <= 0){
+    if (!isFinite(val) || val <= 0){
       alert("Tonic must be positive.");
       return;
     }
     tonic = val;
     renderScale();
   });
+
   addIntervalBtn.addEventListener("click", () => {
     let text = intervalInput.value.trim();
     if(!text){
@@ -170,16 +143,24 @@ function init(){
     }
     renderScale();
   });
+
+  // Once at startup
+  resizeCanvas();
   renderScale();
 }
 
+// Make the internal pixel size match the CSS size
+function resizeCanvas() {
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+}
+
+// Parse fraction or decimal input
 function parseFractionOrDecimal(s) {
   s = s.trim();
   if (s.includes('^')) {
     let match = s.match(/^(.+)\^(.+)$/);
-    if (!match) {
-      return NaN;
-    }
+    if(!match) return NaN;
     let baseStr = match[1].replace(/^\(+/, '').replace(/\)+$/, '');
     let expStr  = match[2].replace(/^\(+/, '').replace(/\)+$/, '');
     let baseVal = parseFractionOrDecimal(baseStr);
@@ -200,13 +181,21 @@ function parseFractionOrDecimal(s) {
   return parseFloat(s);
 }
 
-//--- Render scale on canvas
-function renderScale(){
-  ctx.clearRect(0,0,canvas.width, canvas.height);
+// Clickable regions for checkboxes/labels
+let clickableRegions = [];
+
+function renderScale() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   clickableRegions = [];
   scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
 
-  // Draw horizontal line
+  // We can define left/right boundaries based on a percentage of the new width
+  const LEFT_X = 0.08 * canvas.width;
+  const RIGHT_X = 0.92 * canvas.width;
+  const MID_Y = canvas.height / 2;
+  const WIDTH = RIGHT_X - LEFT_X;
+
+  // Draw the horizontal line
   ctx.strokeStyle = "#0af";
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -215,26 +204,29 @@ function renderScale(){
   ctx.stroke();
 
   let placedLabels = [];
-  // Draw interval labels between adjacent degrees
+
+  // Intervals between adjacent degrees
   ctx.font = "30px Trebuchet MS";
   ctx.fillStyle = "#fffbcc";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
   for(let i = 0; i < scaleDegrees.length - 1; i++){
     let leftVal = scaleDegrees[i].floatVal;
     let rightVal = scaleDegrees[i+1].floatVal;
     let gap = rightVal / leftVal;
     let mid = (leftVal + rightVal) / 2;
-    let midX = ratioToX(mid);
+    let midX = ratioToX(mid, LEFT_X, WIDTH);
     let gapStr = fractionStringApprox(gap);
     let lbl = positionLabel(midX, MID_Y - 50, gapStr, "interval", placedLabels);
     drawLabel(lbl);
   }
 
-  // Draw each scale degree: tick, ratio label, freq label, and checkbox
+  // Each scale degree: tick, ratio label, freq label, checkbox
   for(let deg of scaleDegrees){
-    let x = ratioToX(deg.floatVal);
-    // Tick
+    let x = ratioToX(deg.floatVal, LEFT_X, WIDTH);
+
+    // Tick line
     ctx.strokeStyle = "#66b0ff";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -242,14 +234,14 @@ function renderScale(){
     ctx.lineTo(x, MID_Y + 70);
     ctx.stroke();
 
-    // Ratio label (now using 24px font for improved separation)
+    // Ratio label
     ctx.font = "24px Trebuchet MS";
     ctx.fillStyle = "#f0c";
     let ratioLbl = positionLabel(x, MID_Y - 90, deg.fractionText, "ratio", placedLabels);
     ratioLbl.degree = deg;
     drawLabel(ratioLbl);
 
-    // Frequency label (28px cyan)
+    // Frequency label
     ctx.font = "28px Trebuchet MS";
     ctx.fillStyle = "#0ff";
     let freqVal = deg.floatVal * tonic;
@@ -258,11 +250,11 @@ function renderScale(){
     freqLbl.degree = deg;
     drawLabel(freqLbl);
 
-    // Checkbox above ratio label to toggle selection
+    // Checkbox
     let checkBoxSize = 20;
     let checkBoxX = x - (checkBoxSize / 2);
-    let checkBoxY = ratioLbl.y - 30; // 30px above ratio label
-    registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, (evt) => {
+    let checkBoxY = ratioLbl.y - 30;
+    registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, () => {
       deg.selected = !deg.selected;
       renderScale();
     });
@@ -282,18 +274,19 @@ function renderScale(){
   }
 }
 
-// Convert ratio [1,2] to x coordinate in [LEFT_X, RIGHT_X]
-function ratioToX(r) {
-  return LEFT_X + (r - 1) * WIDTH;
+// ratio [1..2] => x in [LEFT_X..(LEFT_X + WIDTH)]
+function ratioToX(r, leftX, width) {
+  let t = (r - 1) / (2 - 1); // normalized 0..1
+  return leftX + t * width;
 }
 
-// Compute approximate fraction with denominator <= 32; add "~" if approximation error > 0.01.
+// Approx fraction for label
 function fractionStringApprox(value) {
   let bestNum = 1, bestDen = 1;
   let bestErr = Math.abs(value - (bestNum / bestDen));
   for (let den = 1; den <= 32; den++) {
     let num = Math.round(value * den);
-    let err = Math.abs(value - (num / den));
+    let err = Math.abs(value - num / den);
     if (err < bestErr) {
       bestErr = err;
       bestNum = num;
@@ -301,17 +294,14 @@ function fractionStringApprox(value) {
     }
   }
   let fracStr = bestNum + "/" + bestDen;
-  if (bestErr > 0.01) {
-    fracStr = "~" + fracStr;
-  }
+  if (bestErr > 0.01) fracStr = "~" + fracStr;
   return fracStr;
 }
 
-// Auto-position text to avoid overlap
+// Attempt to avoid overlapping text labels
 function positionLabel(cx, cy, text, kind, placedLabels, belowLine = false) {
   let metrics = ctx.measureText(text);
-  // For "interval" we keep 30px; for "ratio", use 24px; for "freq", use 28px.
-  let textHeight = (kind === "interval" ? 30 : (kind === "ratio" ? 24 : 28));
+  let textHeight = kind === "interval" ? 30 : (kind === "ratio" ? 24 : 28);
   let textWidth = metrics.width;
   let labelY = cy;
   let step = belowLine ? 5 : -5;
@@ -334,31 +324,38 @@ function positionLabel(cx, cy, text, kind, placedLabels, belowLine = false) {
 
 function collides(box, boxes) {
   for (let b of boxes) {
-    if (!(box.x + box.w < b.x || box.x > b.x + b.w || box.y + box.h < b.y || box.y > b.y + b.h)) {
+    if (!(box.x + box.w < b.x || box.x > b.x + b.w ||
+          box.y + box.h < b.y || box.y > b.y + b.h)) {
       return true;
     }
   }
   return false;
 }
 
-// Draw label text and register click handlers if applicable
+// Draw text & handle clicks
 function drawLabel(label) {
   let { x, y, w, h, text, kind } = label;
   let cx = x + w / 2, cy = y + h / 2;
+
   ctx.save();
   if (kind === "interval") {
     ctx.font = "30px Trebuchet MS";
     ctx.fillStyle = "#fffbcc";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, cx, cy);
   } else if (kind === "ratio") {
     ctx.font = "24px Trebuchet MS";
     ctx.fillStyle = "#f0c";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, cx, cy);
-    registerClickable(x, y, w, h, (evt) => {
+  } else if (kind === "freq") {
+    ctx.font = "28px Trebuchet MS";
+    ctx.fillStyle = "#0ff";
+  }
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, cx, cy);
+  ctx.restore();
+
+  // Register click for ratio/freq labels
+  if (kind === "ratio") {
+    registerClickable(x, y, w, h, () => {
       if (label.degree.floatVal === 1.0 || label.degree.floatVal === 2.0) return;
       let ok = confirm(`Delete "${label.degree.fractionText}"?`);
       if (ok) {
@@ -366,13 +363,9 @@ function drawLabel(label) {
         renderScale();
       }
     });
-  } else if (kind === "freq") {
-    ctx.font = "28px Trebuchet MS";
-    ctx.fillStyle = "#0ff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, cx, cy);
-    registerClickable(x, y, w, h, (evt) => {
+  }
+  else if (kind === "freq") {
+    registerClickable(x, y, w, h, () => {
       let baseDeg = label.degree;
       let freq = baseDeg.floatVal * tonic;
       let checkedDegrees = scaleDegrees.filter(d => d.selected && d !== baseDeg);
@@ -380,15 +373,13 @@ function drawLabel(label) {
       playNotes(allFreqs);
     });
   }
-  ctx.restore();
 }
 
-// Global array for clickable regions
-let clickableRegions = [];
+// For checkbox, ratio/freq label clicks
 function registerClickable(x, y, w, h, callback) {
   clickableRegions.push({ x, y, w, h, callback });
 }
-canvas.addEventListener("mousedown", (evt) => {
+canvas.addEventListener("mousedown", evt => {
   let rect = canvas.getBoundingClientRect();
   let mx = evt.clientX - rect.left;
   let my = evt.clientY - rect.top;
@@ -401,12 +392,13 @@ canvas.addEventListener("mousedown", (evt) => {
   }
 });
 
-//--- Play multiple notes simultaneously with normalization and triangle waveform
+// Web Audio
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 async function playNotes(freqArray) {
   if (audioCtx.state === "suspended") {
     await audioCtx.resume();
   }
-  let n = freqArray.length;
+  const n = freqArray.length;
   if (n < 1) return;
   const maxAmp = 0.8;
   const duration = 1.0;
@@ -416,12 +408,14 @@ async function playNotes(freqArray) {
     const gain = audioCtx.createGain();
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
+
     let baseAmplitude = 0.2 / n;
     let freqWeight = Math.sqrt(440 / freq);
     let finalAmp = baseAmplitude * freqWeight;
     if (finalAmp > maxAmp) finalAmp = maxAmp;
     gain.gain.setValueAtTime(finalAmp, now);
     gain.gain.linearRampToValueAtTime(0, now + duration);
+
     osc.connect(gain).connect(audioCtx.destination);
     osc.start(now);
     osc.stop(now + duration);
