@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Scale Workshop – Clear & Play Scale</title>
+<title>Scale Workshop – Single-Preset Dropdown</title>
 <style>
   body {
-    margin: 0; 
+    margin: 0;
     padding: 0;
-    background: #0b0f1a; 
+    background: #0b0f1a;
     color: #e0e0e0;
     font-family: "Trebuchet MS", Arial, sans-serif;
   }
@@ -29,7 +29,7 @@
   }
 
   label, select, input, button {
-    font-size: 1.0rem;
+    font-size: .8rem;
   }
   input[type="number"], input[type="text"] {
     padding: 5px;
@@ -48,7 +48,7 @@
     border-radius: 0;
   }
 
-  /* Tron-like custom buttons */
+  /* custom buttons */
   button {
     background: #0fd2ba;
     color: #002;
@@ -70,7 +70,7 @@
     cursor: not-allowed;
   }
 
-  /* Canvas container, full width, half the viewport height */
+  /* Canvas container: full width, half the viewport height */
   #canvas-container {
     width: 100%;
     margin: 0;
@@ -90,22 +90,39 @@
 </head>
 <body>
 <header>
-  <h1>Scale Workshop – Checkboxes & Frequency-Based Normalization</h1>
+  <h1>Scale Workshop – Single-Preset Dropdown</h1>
 </header>
 
+<!-- First row of controls -->
 <div class="controls">
   <label>Tonic Frequency:</label>
-  <input id="tonicInput" type="number" value="261.63" step="0.01" />
+  <input id="tonicInput" type="number" value="130.81" step="0.01" />
   <select id="noteSelect">
-    <option value="220">A3 (~220 Hz)</option>
-    <option value="246.94">B3 (~246.94 Hz)</option>
-    <option value="261.63" selected>C4 (~261.63 Hz)</option>
-    <option value="293.66">D4 (~293.66 Hz)</option>
-    <option value="329.63">E4 (~329.63 Hz)</option>
-    <option value="349.23">F4 (~349.23 Hz)</option>
-    <option value="392.0">G4 (392 Hz)</option>
-    <option value="440.0">A4 (440 Hz)</option>
-    <option value="493.88">B4 (~493.88 Hz)</option>
+   <option value="110.00">A2 (~110.00 Hz)</option>
+<option value="116.54">A#2 (~116.54 Hz)</option>
+<option value="123.47">B2 (~123.47 Hz)</option>
+<option value="130.81"selected>C3 (~130.81 Hz)</option>
+<option value="138.59">C#3 (~138.59 Hz)</option>
+<option value="146.83">D3 (~146.83 Hz)</option>
+<option value="155.56">D#3 (~155.56 Hz)</option>
+<option value="164.81">E3 (~164.81 Hz)</option>
+<option value="174.61">F3 (~174.61 Hz)</option>
+<option value="185.00">F#3 (~185.00 Hz)</option>
+<option value="196.00">G3 (~196.00 Hz)</option>
+<option value="207.65">G#3 (~207.65 Hz)</option>
+<option value="220.00">A3 (~220.00 Hz)</option>
+<option value="233.08">A#3 (~233.08 Hz)</option>
+<option value="246.94">B3 (~246.94 Hz)</option>
+<option value="261.63">C4 (~261.63 Hz)</option>
+<option value="277.18">C#4 (~277.18 Hz)</option>
+<option value="293.66">D4 (~293.66 Hz)</option>
+<option value="311.13">D#4 (~311.13 Hz)</option>
+<option value="329.63">E4 (~329.63 Hz)</option>
+<option value="349.23">F4 (~349.23 Hz)</option>
+<option value="369.99">F#4 (~369.99 Hz)</option>
+<option value="392.00">G4 (~392.00 Hz)</option>
+<option value="415.30">G#4 (~415.30 Hz)</option>
+<option value="440.00">A4 (~440.00 Hz)</option>
   </select>
   <button id="setTonicBtn">Set Tonic</button>
 
@@ -113,94 +130,138 @@
   <input id="intervalInput" type="text" placeholder="3/2 or 1.414" />
   <button id="addIntervalBtn">Add Interval</button>
 
-  <!-- NEW buttons -->
   <button id="playScaleBtn">Play Scale</button>
   <button id="clearAllBtn">Clear All</button>
 </div>
 
+<!-- Second row: single Preset dropdown, plus Save/Load -->
+<div class="controls">
+  <label>Preset:</label>
+  <select id="presetSelect">
+    <!-- HARMONIC partials 4..24 -->
+    <optgroup label="Harmonic">
+      <!-- We'll generate these manually -->
+      <option value="harmonic-4">4 partials</option>
+      <option value="harmonic-5">5 partials</option>
+      <option value="harmonic-6">6 partials</option>
+      <option value="harmonic-7">7 partials</option>
+      <option value="harmonic-8">8 partials</option>
+      <option value="harmonic-9">9 partials</option>
+      <option value="harmonic-10">10 partials</option>
+      <option value="harmonic-11">11 partials</option>
+      <option value="harmonic-12">12 partials</option>
+      <option value="harmonic-13">13 partials</option>
+      <option value="harmonic-14">14 partials</option>
+      <option value="harmonic-15">15 partials</option>
+      <option value="harmonic-16">16 partials</option>
+      <option value="harmonic-17">17 partials</option>
+      <option value="harmonic-18">18 partials</option>
+      <option value="harmonic-19">19 partials</option>
+      <option value="harmonic-20">20 partials</option>
+      <option value="harmonic-21">21 partials</option>
+      <option value="harmonic-22">22 partials</option>
+      <option value="harmonic-23">23 partials</option>
+      <option value="harmonic-24">24 partials</option>
+    </optgroup>
+
+    <!-- EQUAL TEMPER 2..53 -->
+    <optgroup label="Equal Temper">
+      <option value="equal-2">2 TET</option>
+      <option value="equal-3">3 TET</option>
+      <option value="equal-4">4 TET</option>
+      <option value="equal-5">5 TET</option>
+      <option value="equal-6">6 TET</option>
+      <option value="equal-7">7 TET</option>
+      <option value="equal-8">8 TET</option>
+      <option value="equal-9">9 TET</option>
+      <option value="equal-10">10 TET</option>
+      <option value="equal-11">11 TET</option>
+      <option value="equal-12">12 TET</option>
+      <option value="equal-13">13 TET</option>
+      <option value="equal-18">18 TET</option> 
+      <option value="equal-19">19 TET</option>
+      <option value="equal-22">22 TET</option>
+      <option value="equal-24">24 TET</option>
+      <option value="equal-27">27 TET</option>
+      <option value="equal-28">28 TET</option>
+      <option value="equal-29">29 TET</option>
+      <option value="equal-31">31 TET</option>
+   </optgroup>
+
+    <!-- CUSTOM -->
+    <optgroup label="Custom">
+      <option value="custom-comingsoon">Coming soon!</option>
+    </optgroup>
+  </select>
+
+  <button id="saveBtn">Save</button>
+  <button id="loadBtn">Load</button>
+  <input type="file" id="fileInput" accept="application/json" style="display:none" />
+</div>
+
 <div id="canvas-container">
-  <!-- No fixed width/height in HTML; let CSS handle it -->
   <canvas id="scale-canvas"></canvas>
 </div>
 
 <script>
-//------------------------ Data & Audio Setup ------------------------
+/* ------------------------------------------------
+   Data + Audio Setup
+--------------------------------------------------- */
 let scaleDegrees = [
   { fractionText: "1/1", floatVal: 1.0, selected: false },
   { fractionText: "2/1", floatVal: 2.0, selected: false }
 ];
 let tonic = 261.63;
-
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let isPlaying = false; // track if "Play Scale" is in progress
 
-function parseFractionOrDecimal(s) {
-  s = s.trim();
-  if (s.includes('^')) {
-    let match = s.match(/^(.+)\^(.+)$/);
-    if(!match) return NaN;
-    let baseStr = match[1].replace(/^\(+/, '').replace(/\)+$/, '');
-    let expStr  = match[2].replace(/^\(+/, '').replace(/\)+$/, '');
-    let baseVal = parseFractionOrDecimal(baseStr);
-    let expVal  = parseFractionOrDecimal(expStr);
-    if(!isFinite(baseVal) || !isFinite(expVal)) {
-      return NaN;
-    }
-    return Math.pow(baseVal, expVal);
-  }
-  if (s.includes('/')) {
-    let parts = s.split('/');
-    if (parts.length !== 2) return NaN;
-    let num = parseFloat(parts[0]);
-    let den = parseFloat(parts[1]);
-    if(!isFinite(num) || !isFinite(den) || den === 0) return NaN;
-    return num / den;
-  }
-  return parseFloat(s);
-}
-
-//------------------------ Canvas + Drawing Setup ------------------------
+/* ------------------------------------------------
+   DOM Setup & Event Listeners
+--------------------------------------------------- */
 const canvas = document.getElementById("scale-canvas");
 const ctx = canvas.getContext("2d");
 let clickableRegions = [];
 
-// Make internal canvas size match CSS size
-function resizeCanvas() {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-}
-
-// On window resize, recalc and redraw
+window.addEventListener("DOMContentLoaded", init);
 window.addEventListener("resize", () => {
   resizeCanvas();
   renderScale();
 });
 
-//------------------------ Lifecycle ------------------------
-window.addEventListener("DOMContentLoaded", init);
-
-function init() {
-  // UI references
+function init(){
+  // Basic controls
+  
   const noteSelect = document.getElementById("noteSelect");
   const tonicInput = document.getElementById("tonicInput");
+  tonic = parseFloat(noteSelect.value);
+  tonicInput.value = noteSelect.value;
   const setTonicBtn = document.getElementById("setTonicBtn");
   const intervalInput = document.getElementById("intervalInput");
   const addIntervalBtn = document.getElementById("addIntervalBtn");
   const playScaleBtn = document.getElementById("playScaleBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
 
-  // Event handlers
+  // New preset + save/load controls
+  const presetSelect = document.getElementById("presetSelect");
+  const saveBtn = document.getElementById("saveBtn");
+  const loadBtn = document.getElementById("loadBtn");
+  const fileInput = document.getElementById("fileInput");
+
+  // Tonic selection
   noteSelect.addEventListener("change", () => {
     tonicInput.value = noteSelect.value;
   });
   setTonicBtn.addEventListener("click", () => {
     let val = parseFloat(tonicInput.value);
-    if(!isFinite(val) || val <= 0){
+    if(!isFinite(val) || val<=0){
       alert("Tonic must be positive.");
       return;
     }
     tonic = val;
     renderScale();
   });
+
+  // Add interval
   addIntervalBtn.addEventListener("click", () => {
     let text = intervalInput.value.trim();
     if(!text){
@@ -208,58 +269,200 @@ function init() {
       return;
     }
     let r = parseFractionOrDecimal(text);
-    if(!isFinite(r) || r <= 1 || r >= 2){
+    if(!isFinite(r) || r<=1 || r>=2){
       alert("Ratio must be >1 and <2");
       return;
     }
-    // Add if not already present
-    let exists = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
-    if(!exists){
+    // add if not present
+    let exist = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
+    if(!exist){
       scaleDegrees.push({ fractionText: text, floatVal: r, selected: false });
-      scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
+      scaleDegrees.sort((a,b)=> a.floatVal - b.floatVal);
     }
     renderScale();
   });
 
-  // NEW: Clear All -> remove everything but 1/1 and 2/1
+  // Clear all
   clearAllBtn.addEventListener("click", () => {
-    scaleDegrees = scaleDegrees.filter(d => 
-      d.floatVal === 1.0 || d.floatVal === 2.0
-    );
+    scaleDegrees = scaleDegrees.filter(d => d.floatVal===1 || d.floatVal===2);
     renderScale();
   });
 
-  // NEW: Play Scale -> play all notes 1/1..2/1 in ascending order
+  // Play scale
   playScaleBtn.addEventListener("click", async () => {
-    if(isPlaying) return; // skip if currently playing
+    if(isPlaying) return;
     isPlaying = true;
     setControlsEnabled(false);
-
     await playScaleOnce();
-
     setControlsEnabled(true);
     isPlaying = false;
   });
 
-  // Start
+  // Preset selection
+  presetSelect.addEventListener("change", () => {
+    applyPresetSelection();
+  });
+
+  // Save/Load
+  saveBtn.addEventListener("click", () => {
+    doSave();
+  });
+  loadBtn.addEventListener("click", () => {
+    fileInput.click(); // open hidden file input
+  });
+  fileInput.addEventListener("change", evt => {
+    doLoad(evt.target.files);
+    fileInput.value = ""; // reset input so picking same file again re-triggers
+  });
+
   resizeCanvas();
   renderScale();
 }
 
-//------------------------ Rendering ------------------------
-function renderScale() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+/* ------------------------------------------------
+   PRESET: one drop-down with "harmonic-X", "equal-Y", "custom-Z"
+--------------------------------------------------- */
+function applyPresetSelection(){
+  const presetSelect = document.getElementById("presetSelect");
+  let val = presetSelect.value; // e.g. "harmonic-4", "equal-23", "custom-comingsoon"
+
+  // parse
+  let [type, numStr] = val.split("-");
+  if(!type) return;
+
+  // if custom
+  if(type === "custom"){
+    alert("Custom preset is not yet implemented. Coming soon!");
+    return;
+  }
+
+  // confirm
+  let ok = confirm("This will overwrite current intervals. Continue?");
+  if(!ok){
+    // revert selection to nothing or do nothing
+    return;
+  }
+
+  // overwrite scale
+  scaleDegrees = [
+    { fractionText: "1/1", floatVal: 1.0, selected: false },
+    { fractionText: "2/1", floatVal: 2.0, selected: false }
+  ];
+
+  let n = parseInt(numStr, 10);
+  if(type==="harmonic"){
+    // from (n+1)/n up to (2n)/n
+    for(let i=n+1; i<=2*n; i++){
+      let valf = i/n;
+      if(Math.abs(valf-1)<1e-7) continue; // skip if exactly 1
+      if(Math.abs(valf-2)<1e-7) continue; // skip if exactly 2
+      let fracTxt = i+"/"+n;
+      scaleDegrees.push({ fractionText: fracTxt, floatVal: valf, selected: false });
+    }
+  }
+  else if(type==="equal"){
+    // from k=1..(n-1) => 2^(k/n)
+    for(let k=1; k<n; k++){
+      let valf = Math.pow(2, k/n);
+      if(Math.abs(valf-1)<1e-7) continue;
+      if(Math.abs(valf-2)<1e-7) continue;
+      let fracTxt = `2^(${k}/${n})`;
+      scaleDegrees.push({ fractionText: fracTxt, floatVal: valf, selected: false });
+    }
+  }
+
+  scaleDegrees.sort((a,b)=> a.floatVal - b.floatVal);
+  renderScale();
+}
+
+/* ------------------------------------------------
+   SAVE / LOAD JSON
+--------------------------------------------------- */
+function doSave(){
+  let data = {
+    tonic: tonic,
+    scaleDegrees: scaleDegrees.map(d => ({
+      fractionText: d.fractionText,
+      floatVal: d.floatVal,
+      selected: d.selected
+    }))
+  };
+  let jsonStr = JSON.stringify(data, null, 2);
+
+  // filename e.g. scale-20250331-1805-3.json
+  let now = new Date();
+  let YYYY = now.getFullYear();
+  let MM = String(now.getMonth()+1).padStart(2,"0");
+  let DD = String(now.getDate()).padStart(2,"0");
+  let hh = String(now.getHours()).padStart(2,"0");
+  let mm = String(now.getMinutes()).padStart(2,"0");
+  let userCount = scaleDegrees.length - 2; // ignoring 1/1 & 2/1
+  let fileName = `scale-${YYYY}${MM}${DD}-${hh}${mm}-${userCount}.json`;
+
+  let blob = new Blob([jsonStr], { type:"application/json" });
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function doLoad(fileList){
+  if(!fileList || fileList.length<1) return;
+  let file = fileList[0];
+  let reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let data = JSON.parse(e.target.result);
+      if(!data.scaleDegrees || !Array.isArray(data.scaleDegrees)){
+        alert("Invalid file format: no scaleDegrees array found.");
+        return;
+      }
+      let ok = confirm("Loading will overwrite current intervals. Continue?");
+      if(!ok) return;
+      // Overwrite
+      tonic = data.tonic || 261.63;
+      scaleDegrees = data.scaleDegrees.map(d => ({
+        fractionText: d.fractionText,
+        floatVal: d.floatVal,
+        selected: !!d.selected
+      }));
+      scaleDegrees.sort((a,b)=> a.floatVal - b.floatVal);
+      renderScale();
+    }
+    catch(err){
+      alert("Error parsing JSON: " + err);
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ------------------------------------------------
+   Canvas + Drawing
+--------------------------------------------------- */
+function resizeCanvas(){
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+}
+
+function renderScale(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   clickableRegions = [];
 
-  scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
+  // sort intervals
+  scaleDegrees.sort((a,b)=> a.floatVal - b.floatVal);
 
-  // map [1..2] -> [LEFT_X..RIGHT_X]
+  // define left/right coords
   const LEFT_X = 0.08 * canvas.width;
   const RIGHT_X = 0.92 * canvas.width;
-  const MID_Y = canvas.height / 2;
+  const MID_Y = canvas.height/2;
   const WIDTH = RIGHT_X - LEFT_X;
 
-  // horizontal line
+  // draw baseline
   ctx.strokeStyle = "#0af";
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -269,19 +472,19 @@ function renderScale() {
 
   let placedLabels = [];
 
-  // interval labels (between adjacent scaleDegrees)
-  ctx.font = "30px Trebuchet MS";
+  // intervals between adjacent degrees
+  ctx.font = "20px Trebuchet MS";
   ctx.fillStyle = "#fffbcc";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  for(let i = 0; i < scaleDegrees.length - 1; i++){
+  for(let i=0; i< scaleDegrees.length-1; i++){
     let leftVal = scaleDegrees[i].floatVal;
     let rightVal = scaleDegrees[i+1].floatVal;
     let gap = rightVal / leftVal;
     let mid = (leftVal + rightVal)/2;
     let midX = ratioToX(mid, LEFT_X, WIDTH);
     let gapStr = fractionStringApprox(gap);
-    let lbl = positionLabel(midX, MID_Y - 50, gapStr, "interval", placedLabels);
+    let lbl = positionLabel(midX, MID_Y-50, gapStr, "interval", placedLabels);
     drawLabel(lbl);
   }
 
@@ -289,35 +492,35 @@ function renderScale() {
   for(let deg of scaleDegrees){
     let x = ratioToX(deg.floatVal, LEFT_X, WIDTH);
 
-    // tick
+    // Tick
     ctx.strokeStyle = "#66b0ff";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(x, MID_Y - 70);
-    ctx.lineTo(x, MID_Y + 70);
+    ctx.moveTo(x, MID_Y-70);
+    ctx.lineTo(x, MID_Y+70);
     ctx.stroke();
 
-    // ratio label
-    ctx.font = "24px Trebuchet MS";
+    // Ratio label
+    ctx.font = "20px Trebuchet MS";
     ctx.fillStyle = "#f0c";
-    let ratioLbl = positionLabel(x, MID_Y - 90, deg.fractionText, "ratio", placedLabels);
+    let ratioLbl = positionLabel(x, MID_Y-90, deg.fractionText, "ratio", placedLabels);
     ratioLbl.degree = deg;
     drawLabel(ratioLbl);
 
-    // freq label
-    ctx.font = "28px Trebuchet MS";
+    // Frequency label
+    ctx.font = "20px Trebuchet MS";
     ctx.fillStyle = "#0ff";
     let freqVal = deg.floatVal * tonic;
-    let freqStr = freqVal.toFixed(4) + " Hz";
-    let freqLbl = positionLabel(x, MID_Y + 90, freqStr, "freq", placedLabels, true);
+    let freqStr = freqVal.toFixed(2)+" Hz";
+    let freqLbl = positionLabel(x, MID_Y+90, freqStr, "freq", placedLabels, true);
     freqLbl.degree = deg;
     drawLabel(freqLbl);
 
-    // checkbox
+    // Checkbox
     let checkBoxSize = 20;
-    let checkBoxX = x - (checkBoxSize / 2);
+    let checkBoxX = x - checkBoxSize/2;
     let checkBoxY = ratioLbl.y - 30;
-    registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, () => {
+    registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, ()=>{
       deg.selected = !deg.selected;
       renderScale();
     });
@@ -328,64 +531,65 @@ function renderScale() {
     if(deg.selected){
       ctx.beginPath();
       ctx.moveTo(checkBoxX, checkBoxY);
-      ctx.lineTo(checkBoxX + checkBoxSize, checkBoxY + checkBoxSize);
-      ctx.moveTo(checkBoxX + checkBoxSize, checkBoxY);
-      ctx.lineTo(checkBoxX, checkBoxY + checkBoxSize);
+      ctx.lineTo(checkBoxX+checkBoxSize, checkBoxY+checkBoxSize);
+      ctx.moveTo(checkBoxX+checkBoxSize, checkBoxY);
+      ctx.lineTo(checkBoxX, checkBoxY+checkBoxSize);
       ctx.stroke();
     }
     ctx.restore();
   }
 }
 
-// ratio [1..2] => x in [leftX..(leftX+width)]
-function ratioToX(r, leftX, width) {
+// ratio 1..2 => x from leftX..(leftX+width)
+function ratioToX(r, leftX, width){
   let t = (r - 1)/(2 - 1); // 0..1
-  return leftX + t * width;
+  return leftX + t*width;
 }
 
-function fractionStringApprox(value) {
-  let bestNum = 1, bestDen = 1;
-  let bestErr = Math.abs(value - (bestNum / bestDen));
-  for (let den = 1; den <= 32; den++) {
-    let num = Math.round(value * den);
-    let err = Math.abs(value - (num / den));
-    if (err < bestErr) {
+// approximate fraction for labeling
+function fractionStringApprox(value){
+  let bestNum=1, bestDen=1;
+  let bestErr = Math.abs(value - (bestNum/bestDen));
+  for(let den=1; den<=32; den++){
+    let num = Math.round(value*den);
+    let err = Math.abs(value - (num/den));
+    if(err<bestErr){
       bestErr = err;
       bestNum = num;
       bestDen = den;
     }
   }
-  let fracStr = bestNum + "/" + bestDen;
-  if (bestErr > 0.01) fracStr = "~" + fracStr;
-  return fracStr;
+  let frac = bestNum+"/"+bestDen;
+  if(bestErr>0.01) frac = "~"+frac;
+  return frac;
 }
 
-// place text labels so they avoid overlap if possible
-function positionLabel(cx, cy, text, kind, placedLabels, belowLine = false) {
+// auto-position text to avoid collisions
+function positionLabel(cx, cy, text, kind, placedLabels, below=false){
   let metrics = ctx.measureText(text);
-  let textHeight = (kind === "interval" ? 30 : (kind === "ratio" ? 24 : 28));
+  let textHeight = (kind==="interval"? 30 : (kind==="ratio"? 24:28));
   let textWidth = metrics.width;
   let labelY = cy;
-  let step = belowLine ? 5 : -5;
-  let attempts = 40;
+  let step = below? 5 : -5;
+  let attempts=40;
   for(let i=0; i<attempts; i++){
     let x0 = cx - textWidth/2;
     let y0 = labelY - textHeight/2;
-    let box = { x: x0, y: y0, w: textWidth, h: textHeight };
+    let box = { x:x0, y:y0, w:textWidth, h:textHeight };
     if(!collides(box, placedLabels)){
       placedLabels.push(box);
-      return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
+      return { x:x0, y:y0, w:textWidth, h:textHeight, text, kind };
     }
-    labelY += step;
+    labelY+=step;
   }
   // fallback
   let x0 = cx - textWidth/2;
   let y0 = cy - textHeight/2;
-  placedLabels.push({ x: x0, y: y0, w: textWidth, h: textHeight });
-  return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
+  placedLabels.push({ x:x0, y:y0, w:textWidth, h:textHeight });
+  return { x:x0, y:y0, w:textWidth, h:textHeight, text, kind };
 }
 
-function collides(box, boxes) {
+function collides(box, boxes){
   for(let b of boxes){
     if(!(box.x+box.w < b.x || box.x > b.x+b.w ||
          box.y+box.h < b.y || box.y > b.y+b.h)){
@@ -395,18 +599,19 @@ function collides(box, boxes) {
   return false;
 }
 
-function drawLabel(label) {
-  let { x, y, w, h, text, kind } = label;
-  let cx = x + w/2, cy = y + h/2;
+function drawLabel(label){
+  const { x, y, w, h, text, kind } = label;
+  let cx = x + w/2;
+  let cy = y + h/2;
   ctx.save();
-  if(kind === "interval"){
-    ctx.font = "30px Trebuchet MS";
+  if(kind==="interval"){
+    ctx.font = "20px Trebuchet MS";
     ctx.fillStyle = "#fffbcc";
-  } else if(kind === "ratio"){
-    ctx.font = "24px Trebuchet MS";
+  } else if(kind==="ratio"){
+    ctx.font = "20px Trebuchet MS";
     ctx.fillStyle = "#f0c";
-  } else if(kind === "freq"){
-    ctx.font = "28px Trebuchet MS";
+  } else if(kind==="freq"){
+    ctx.font = "20px Trebuchet MS";
     ctx.fillStyle = "#0ff";
   }
   ctx.textAlign = "center";
@@ -414,125 +619,147 @@ function drawLabel(label) {
   ctx.fillText(text, cx, cy);
   ctx.restore();
 
-  // add click for ratio/freq label
-  if(kind === "ratio"){
-    registerClickable(x, y, w, h, () => {
-      if(label.degree.floatVal === 1.0 || label.degree.floatVal === 2.0) return;
+  // ratio => clickable to remove (except 1/1 & 2/1)
+  if(kind==="ratio"){
+    registerClickable(x, y, w, h, ()=>{
+      if(label.degree.floatVal===1.0 || label.degree.floatVal===2.0) return;
       let ok = confirm(`Delete "${label.degree.fractionText}"?`);
       if(ok){
-        scaleDegrees = scaleDegrees.filter(d => d !== label.degree);
+        scaleDegrees = scaleDegrees.filter(d => d!==label.degree);
         renderScale();
       }
     });
-  } else if(kind === "freq"){
-    registerClickable(x, y, w, h, () => {
+  }
+  // freq => clickable to play chord
+  else if(kind==="freq"){
+    registerClickable(x, y, w, h, ()=>{
       let baseDeg = label.degree;
       let freq = baseDeg.floatVal * tonic;
-      let checked = scaleDegrees.filter(d => d.selected && d !== baseDeg);
-      let allFreqs = [freq, ...checked.map(d => d.floatVal * tonic)];
-      playNotes(allFreqs);
+      let others = scaleDegrees.filter(d => d.selected && d!==baseDeg);
+      let allFreqs = [freq, ...others.map(o => o.floatVal*tonic)];
+      playNotesSimult(allFreqs);
     });
   }
 }
 
-//------------------------ Clickable Regions ------------------------
-function registerClickable(x, y, w, h, callback) {
+/* ------------------------------------------------
+   CLICKABLES
+--------------------------------------------------- */
+function registerClickable(x,y,w,h, callback){
   clickableRegions.push({ x, y, w, h, callback });
 }
-canvas.addEventListener("mousedown", evt => {
+canvas.addEventListener("mousedown", evt=>{
   let rect = canvas.getBoundingClientRect();
   let mx = evt.clientX - rect.left;
   let my = evt.clientY - rect.top;
-  for(let i = clickableRegions.length - 1; i >= 0; i--){
+  for(let i=clickableRegions.length-1; i>=0; i--){
     let r = clickableRegions[i];
-    if(mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h){
+    if(mx>=r.x && mx<=r.x+r.w && my>=r.y && my<=r.y+r.h){
       r.callback(evt);
       break;
     }
   }
 });
 
-//------------------------ Playing Notes ------------------------
-let isPlaying = false;
-
-function setControlsEnabled(enabled) {
-  // Disable all buttons/inputs/selects in the .controls bar
-  document.querySelectorAll('.controls button, .controls input, .controls select')
-    .forEach(elem => {
-      elem.disabled = !enabled;
+/* ------------------------------------------------
+   Playback: sequential or simultaneous
+--------------------------------------------------- */
+function setControlsEnabled(enabled){
+  document.querySelectorAll(".controls button, .controls input, .controls select")
+    .forEach(el => {
+      el.disabled = !enabled;
     });
 }
 
-async function playScaleOnce() {
-  // Sort ascending
-  let sorted = [...scaleDegrees].sort((a,b) => a.floatVal - b.floatVal);
-  // Duration per note
-  let noteDur = 1.0; // seconds
+async function playScaleOnce(){
+  let sorted = [...scaleDegrees].sort((a,b)=> a.floatVal - b.floatVal);
+  let noteDur = 0.5; // sec
   for(let deg of sorted){
     let freq = deg.floatVal * tonic;
     await playOneNoteSequential(freq, noteDur);
   }
 }
 
-/** Play a single note for the given duration, returning a Promise when it ends. */
+/** Play a single note, return a Promise that resolves when it ends. */
 function playOneNoteSequential(freq, duration){
-  return new Promise(async (resolve) => {
-    if(audioCtx.state === "suspended"){
+  return new Promise(async resolve=>{
+    if(audioCtx.state==="suspended"){
       await audioCtx.resume();
     }
-    let now = audioCtx.currentTime;
+    const now = audioCtx.currentTime;
     let osc = audioCtx.createOscillator();
     let gain = audioCtx.createGain();
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
 
-    // simple amplitude logic
-    const maxAmp = 0.8;
-    let baseAmplitude = 0.2;
-    let freqWeight = Math.sqrt(440 / freq);
-    let finalAmp = baseAmplitude * freqWeight;
-    if(finalAmp > maxAmp) finalAmp = maxAmp;
+    // amplitude weighting
+    let baseAmp = 0.2;
+    let freqWeight = Math.sqrt(440/freq);
+    let finalAmp = baseAmp*freqWeight;
+    if(finalAmp>0.8) finalAmp=0.8;
     gain.gain.setValueAtTime(finalAmp, now);
-    gain.gain.linearRampToValueAtTime(0, now + duration);
-
-    // End event
-    osc.onended = () => resolve();
+    gain.gain.linearRampToValueAtTime(0, now+duration);
 
     osc.connect(gain).connect(audioCtx.destination);
+    osc.onended = ()=> resolve();
     osc.start(now);
-    osc.stop(now + duration);
+    osc.stop(now+duration);
   });
 }
 
-/** Play multiple notes simultaneously (as before) */
-async function playNotes(freqArray) {
-  if (audioCtx.state === "suspended") {
+/** Play multiple notes simultaneously. */
+async function playNotesSimult(freqArray){
+  if(audioCtx.state==="suspended"){
     await audioCtx.resume();
   }
   let n = freqArray.length;
-  if (n < 1) return;
-
-  const maxAmp = 0.8;
+  if(n<1) return;
   const duration = 1.0;
+  const maxAmp = 0.8;
   const now = audioCtx.currentTime;
-
-  for (let freq of freqArray) {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+  for(let freq of freqArray){
+    let osc = audioCtx.createOscillator();
+    let gain = audioCtx.createGain();
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
 
-    let baseAmplitude = 0.2 / n;
-    let freqWeight = Math.sqrt(440 / freq);
-    let finalAmp = baseAmplitude * freqWeight;
-    if(finalAmp > maxAmp) finalAmp = maxAmp;
+    let baseAmp = 0.2 / n;
+    let freqWeight = Math.sqrt(440/freq);
+    let finalAmp = baseAmp*freqWeight;
+    if(finalAmp>maxAmp) finalAmp=maxAmp;
     gain.gain.setValueAtTime(finalAmp, now);
-    gain.gain.linearRampToValueAtTime(0, now + duration);
+    gain.gain.linearRampToValueAtTime(0, now+duration);
 
     osc.connect(gain).connect(audioCtx.destination);
     osc.start(now);
-    osc.stop(now + duration);
+    osc.stop(now+duration);
   }
+}
+
+/* ------------------------------------------------
+   Utility: parse fraction or decimal
+--------------------------------------------------- */
+function parseFractionOrDecimal(s){
+  s = s.trim();
+  if(s.includes("^")){
+    let match = s.match(/^(.+)\^(.+)$/);
+    if(!match) return NaN;
+    let baseStr = match[1].replace(/^\(+/,"").replace(/\)+$/,"");
+    let expStr  = match[2].replace(/^\(+/,"").replace(/\)+$/,"");
+    let baseVal = parseFractionOrDecimal(baseStr);
+    let expVal  = parseFractionOrDecimal(expStr);
+    if(!isFinite(baseVal) || !isFinite(expVal)) return NaN;
+    return Math.pow(baseVal, expVal);
+  }
+  if(s.includes("/")){
+    let parts = s.split("/");
+    if(parts.length!==2) return NaN;
+    let num = parseFloat(parts[0]);
+    let den = parseFloat(parts[1]);
+    if(!isFinite(num) || !isFinite(den) || den===0) return NaN;
+    return num/den;
+  }
+  return parseFloat(s);
 }
 </script>
 </body>
