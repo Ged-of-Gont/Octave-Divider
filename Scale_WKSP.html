@@ -546,23 +546,47 @@ function ratioToX(r, leftX, width){
   return leftX + t*width;
 }
 
-// approximate fraction for labeling
-function fractionStringApprox(value){
-  let bestNum=1, bestDen=1;
-  let bestErr = Math.abs(value - (bestNum/bestDen));
-  for(let den=1; den<=32; den++){
-    let num = Math.round(value*den);
-    let err = Math.abs(value - (num/den));
-    if(err<bestErr){
-      bestErr = err;
-      bestNum = num;
-      bestDen = den;
-    }
-  }
-  let frac = bestNum+"/"+bestDen;
-  if(bestErr>0.01) frac = "~"+frac;
-  return frac;
+function fractionStringApprox(x) {
+  // Use our continued fraction algorithm with a high maximum denominator.
+  const maxDenom = 1000000;
+  const [num, den] = bestRationalApproximation(x, maxDenom);
+  const approx = num / den;
+  const error = Math.abs(x - approx);
+  let result = `${num}/${den}`;
+  if (error > 0.01) result = "~" + result;
+  return result;
 }
+
+function bestRationalApproximation(x, maxDenom) {
+  // Standard continued fraction algorithm using the recurrence:
+  // p[-2] = 0, p[-1] = 1; q[-2] = 1, q[-1] = 0.
+  // Then for i >= 0:
+  //   p[i] = a[i] * p[i-1] + p[i-2]
+  //   q[i] = a[i] * q[i-1] + q[i-2]
+  // We iterate until the next denominator would exceed maxDenom.
+  let pPrevPrev = 0, pPrev = 1;
+  let qPrevPrev = 1, qPrev = 0;
+  let fraction = x;
+  let a = Math.floor(fraction);
+  // First convergent:
+  let p = a * pPrev + pPrevPrev; // = a
+  let q = a * qPrev + qPrevPrev; // = 1
+  // Loop to get the next convergents.
+  while (true) {
+    let remainder = fraction - a;
+    if (Math.abs(remainder) < 1e-12) break;
+    fraction = 1 / remainder;
+    a = Math.floor(fraction);
+    let pNext = a * p + pPrev;
+    let qNext = a * q + qPrev;
+    if (qNext > maxDenom) break;
+    pPrev = p; qPrev = q;
+    p = pNext; q = qNext;
+  }
+  return [p, q];
+}
+
+
 
 // auto-position text to avoid collisions
 function positionLabel(cx, cy, text, kind, placedLabels, below=false){
