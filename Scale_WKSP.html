@@ -215,15 +215,21 @@
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   let isPlaying = false; // track if "Play Scale" is in progress
   
-  // ////// DRAG CHANGES: new drag-related globals
+  // -------- DRAG + SNAP Variables --------
   let draggingMarker = null;
   const DRAG_TOLERANCE = 10; // px tolerance for “grabbing” a line
-  
-  // We'll store these so the mouse handlers can use them
   let LEFT_X = 0;
   let RIGHT_X = 0;
   let MID_Y = 0;
   let WIDTH = 0;
+  
+  // We'll snap if the ratio is within ~10 cents of certain "nice" rational fractions.
+  // Adjust these two as you like:
+  const MAX_DEN = 16;              // up to d=16
+  const SNAP_THRESHOLD_CENTS = 10; // how many cents away we allow snapping
+  
+  // We'll build a global array of candidate fractions in initSnapCandidates() below.
+  let snapCandidates = [];
   
   /* ------------------------------------------------
      DOM Setup & Event Listeners
@@ -324,14 +330,58 @@
       fileInput.value = ""; // reset input so picking same file again re-triggers
     });
   
+    // Initialize the snapCandidates list:
+    initSnapCandidates();
+  
     resizeCanvas();
     renderScale();
   
-    // ////// DRAG CHANGES: add mouse event listeners for dragging
+    // Mouse event listeners for dragging
     canvas.addEventListener("mousedown", onCanvasMouseDown);
     canvas.addEventListener("mousemove", onCanvasMouseMove);
     canvas.addEventListener("mouseup", () => draggingMarker = null);
     canvas.addEventListener("mouseleave", () => draggingMarker = null);
+  }
+  
+  /* ------------------------------------------------
+     Build Snap Candidates
+     (All reduced fractions n/d with d <= MAX_DEN)
+  --------------------------------------------------- */
+  function initSnapCandidates(){
+    snapCandidates = [];
+    for(let d=1; d<=MAX_DEN; d++){
+      for(let n=1; n<2*d; n++){
+        let ratio = n/d;
+        if(ratio <= 1 || ratio >= 2) continue;
+        if(gcd(n,d) === 1){
+          snapCandidates.push({ ratio, num:n, den:d });
+        }
+      }
+    }
+    // sort ascending
+    snapCandidates.sort((a,b)=> a.ratio - b.ratio);
+  }
+  
+  /* gcd helper for building reduced fractions */
+  function gcd(a,b){
+    if(!b) return a;
+    return gcd(b, a % b);
+  }
+  
+  /* Snapping helper: if close to a “nice ratio,” snap! */
+  function maybeSnap(ratio){
+    // We'll measure difference in cents
+    // difference in cents = 1200 * log2( ratio / candidate.ratio )
+    let bestRatio = ratio;
+    let bestCentsDiff = Infinity;
+    for(let cand of snapCandidates){
+      let centsDiff = 1200 * Math.abs(Math.log2(ratio / cand.ratio));
+      if(centsDiff < SNAP_THRESHOLD_CENTS && centsDiff < bestCentsDiff){
+        bestCentsDiff = centsDiff;
+        bestRatio = cand.ratio;
+      }
+    }
+    return bestRatio;
   }
   
   /* ------------------------------------------------
@@ -341,23 +391,17 @@
     const presetSelect = document.getElementById("presetSelect");
     let val = presetSelect.value; // e.g. "harmonic-4", "equal-23", "custom-comingsoon"
   
-    // parse
     let [type, numStr] = val.split("-");
     if(!type) return;
   
-    // if custom
     if(type === "custom"){
       alert("Custom preset is not yet implemented. Coming soon!");
       return;
     }
   
-    // confirm
     let ok = confirm("This will overwrite current intervals. Continue?");
-    if(!ok){
-      return;
-    }
+    if(!ok) return;
   
-    // overwrite scale
     scaleDegrees = [
       { fractionText: "1/1", floatVal: 1.0, selected: false },
       { fractionText: "2/1", floatVal: 2.0, selected: false }
@@ -367,8 +411,8 @@
     if(type==="harmonic"){
       for(let i=n+1; i<=2*n; i++){
         let valf = i/n;
-        if(Math.abs(valf-1)<1e-7) continue; // skip if exactly 1
-        if(Math.abs(valf-2)<1e-7) continue; // skip if exactly 2
+        if(Math.abs(valf-1)<1e-7) continue;
+        if(Math.abs(valf-2)<1e-7) continue;
         let fracTxt = i+"/"+n;
         scaleDegrees.push({ fractionText: fracTxt, floatVal: valf, selected: false });
       }
@@ -464,24 +508,19 @@
     ctx.clearRect(0,0,canvas.width,canvas.height);
     clickableRegions = [];
   
-    // ////// DRAG CHANGES: store these in global vars so mouse handlers can reuse
     LEFT_X = 0.08 * canvas.width;
     RIGHT_X = 0.92 * canvas.width;
     MID_Y = canvas.height / 2;
     WIDTH = RIGHT_X - LEFT_X;
   
-    // define left/right coords
     ctx.strokeStyle = "#0af";
     ctx.lineWidth = 3;
-    // draw baseline
     ctx.beginPath();
     ctx.moveTo(LEFT_X, MID_Y);
     ctx.lineTo(RIGHT_X, MID_Y);
     ctx.stroke();
   
     let placedLabels = [];
-  
-    // sort intervals
     scaleDegrees.sort((a,b)=> a.floatVal - b.floatVal);
   
     // intervals between adjacent degrees
@@ -552,18 +591,12 @@
     }
   }
   
-  // ratio 1..2 => x from leftX..(leftX+width)
   function ratioToX(r, leftX, width){
-    let t = (r - 1) / (2 - 1); // 0..1
-    return leftX + t * width;
+    let t = (r - 1)/(2 - 1); // 0..1
+    return leftX + t*width;
   }
-  
-  // ////// DRAG CHANGES: new inverse function for x -> ratio
   function xToRatio(mouseX) {
-    // inverse of ratioToX:
-    // ratioToX(r) => leftX + ((r - 1)/(2 - 1)) * width
-    // => r = 1 + ( (mouseX - leftX) / width )
-    return 1 + ( (mouseX - LEFT_X) / WIDTH );
+    return 1 + ((mouseX - LEFT_X)/WIDTH);
   }
   
   function fractionStringApprox(x) {
@@ -588,8 +621,8 @@
       if(Math.abs(remainder) < 1e-12) break;
       fraction = 1/remainder;
       a = Math.floor(fraction);
-      let pNext = a * p + pPrev;
-      let qNext = a * q + qPrev;
+      let pNext = a*p + pPrev;
+      let qNext = a*q + qPrev;
       if(qNext > maxDenom) break;
       pPrev = p; qPrev = q;
       p = pNext; q = qNext;
@@ -682,18 +715,14 @@
     clickableRegions.push({ x, y, w, h, callback });
   }
   
-  // ////// DRAG CHANGES: new function to see if user clicked near a vertical line
   function getMarkerAtPosition(mx, my) {
-    for (let deg of scaleDegrees) {
-      // skip endpoints 1 and 2
-      if (deg.floatVal === 1.0 || deg.floatVal === 2.0) continue;
+    for(let deg of scaleDegrees){
+      // skip endpoints 1/1 and 2/1
+      if(deg.floatVal===1.0 || deg.floatVal===2.0) continue;
       let lineX = ratioToX(deg.floatVal, LEFT_X, WIDTH);
       let lineTop = MID_Y - 70;
       let lineBottom = MID_Y + 70;
-      if (
-        my >= lineTop && my <= lineBottom &&
-        Math.abs(mx - lineX) <= DRAG_TOLERANCE
-      ) {
+      if(my>=lineTop && my<=lineBottom && Math.abs(mx-lineX) <= DRAG_TOLERANCE){
         return deg;
       }
     }
@@ -708,15 +737,14 @@
     let mx = evt.clientX - rect.left;
     let my = evt.clientY - rect.top;
     
-    // 1) see if user clicked near a marker line
     let marker = getMarkerAtPosition(mx, my);
     if(marker){
       draggingMarker = marker;
-      return; // skip the usual clickableRegions handling
+      return; // skip clickableRegions if we found a drag target
     }
   
-    // 2) otherwise do the existing clickableRegions logic
-    for(let i=clickableRegions.length - 1; i>=0; i--){
+    // Otherwise, do the clickableRegions logic
+    for(let i=clickableRegions.length-1; i>=0; i--){
       let r = clickableRegions[i];
       if(mx>=r.x && mx<=r.x+r.w && my>=r.y && my<=r.y+r.h){
         r.callback(evt);
@@ -726,20 +754,26 @@
   }
   
   function onCanvasMouseMove(evt){
-    if(!draggingMarker) return; // only do stuff if dragging
+    if(!draggingMarker) return;
+    
     let rect = canvas.getBoundingClientRect();
     let mx = evt.clientX - rect.left;
-  
-    // convert mouse X -> ratio
+    
+    // convert mouse x -> ratio
     let newRatio = xToRatio(mx);
-  
+    
     // clamp so we don't become 1 or 2
     newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
-    draggingMarker.floatVal = newRatio;
   
-    // Optionally update fractionText or let it stay
-    // E.g. draggingMarker.fractionText = fractionStringApprox(newRatio);
+    // *** SNAP! ***
+    let snapped = maybeSnap(newRatio);
   
+    draggingMarker.floatVal = snapped;
+  
+    // Also update fractionText to reflect the fraction we snapped to
+    draggingMarker.fractionText = fractionStringApprox(snapped);
+  
+    // re-draw
     renderScale();
   }
   
@@ -841,6 +875,7 @@
     return parseFloat(s);
   }
   </script>
+  
   
 </body>
 </html>
