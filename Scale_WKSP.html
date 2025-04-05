@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;600;700&display=swap" rel="stylesheet">
 <title> Everything Under $12</title>
 <style>
   body {
@@ -9,15 +10,18 @@
     padding: 0;
     background: #0b0f1a;
     color: #e0e0e0;
-    font-family: "Trebuchet MS", Arial, sans-serif;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    font-size: 1.2rem;
   }
   header {
     padding: 1rem;
     background: linear-gradient(90deg, #112, #224);
     color: #00ffe0;
+    font-weight: 700;
     text-shadow: 1px 1px #000;
-    border-bottom: 2px solid #09aa9a;
-    font-size: 1.3rem;
+    border-bottom: 2px solid #18e3ea;
+    font-size: 2rem;
   }
 
   .controls {
@@ -27,11 +31,29 @@
     gap: 1rem;
     padding: 1rem;
   }
-
+  .spacer {
+  width: 100px; /* or a fixed width, e.g., width: 20px; */
+}
   /* Increase font-size for better visibility */
-  label, select, input, button {
-    font-size: 1rem;
+  label {
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    font-size: 1.2rem;
   }
+  input, select {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+  }
+  button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 300;
+  font-size: 1rem;
+  }
+
 
   /* Updated UI components: increased height, square corners, flat colors */
   input[type="number"] {
@@ -74,7 +96,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 select {
-  padding: 10px 30px 10px 10px; /* extra right padding for arrow */
+  padding: 10px 20px 10px 10px; /* extra right padding for arrow */
   height: 40px;
   border: 1px solid #333;
   background: #101828 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path fill="%2399ffff" d="M0 0l5 6 5-6z"/></svg>') no-repeat right 10px center;
@@ -115,15 +137,14 @@ select {
     width: 100%;
     margin: 0;
     padding: 2rem;
-    background: linear-gradient(270deg, #112, #224);
-    border: 2px solid #09aa9a;
+    background: #0b0f1a;
     box-sizing: border-box;
   }
   #scale-canvas {
     display: block;
     width: 100%;
     height: 50vh; /* half the viewport height */
-    background: #0b0f1a;
+    background: linear-gradient(270deg, rgb(25, 13, 52), rgb(49, 25, 77));
   }
 </style>
 </head>
@@ -164,15 +185,13 @@ select {
     <option value="440.00">A4 (~440.00 Hz)</option>
   </select>
   <button id="setTonicBtn">Set Tonic</button>
-
+  <div class="spacer"></div>
   <label>New Interval (1 < x < 2):</label>
   <input id="intervalInput" type="text" placeholder="3/2 or 1.414" />
   <button id="addIntervalBtn">Add Interval</button>
-
-  <button id="playScaleBtn">Play Scale</button>
   <button id="clearAllBtn">Clear All</button>
-
-  <label>Preset:</label>
+  <div class="spacer"></div>
+  <label>Scale Presets:</label>
   <select id="presetSelect">
     <!-- HARMONIC partials 4..24 -->
     <optgroup label="Harmonic">
@@ -228,7 +247,7 @@ select {
       <option value="custom-comingsoon">Coming soon!</option>
     </optgroup>
   </select>
-
+  <button id="playScaleBtn">Play Scale</button>
 </div>
 
 <div id="canvas-container">
@@ -249,7 +268,7 @@ select {
     <option value="scl_kbm">SCL + KBM</option>
     <option value="tun">TUN (AnaMark)</option>
   </select>
-
+  <div class="spacer"></div>
   <!-- For KBM or TUN, user might set reference MIDI/freq -->
   <label for="refMidiNoteInput">Ref MIDI note:</label>
   <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
@@ -685,7 +704,7 @@ function renderScale(){
   ctx.stroke();
   let placedLabels = [];
   scaleDegrees.sort((a,b)=> a.floatVal - b.floatVal);
-  ctx.font = "20px Trebuchet MS";
+  ctx.font = "20px JetBrains Mono";
   ctx.fillStyle = "#fffbcc";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -707,12 +726,12 @@ function renderScale(){
     ctx.moveTo(x, MID_Y-70);
     ctx.lineTo(x, MID_Y+70);
     ctx.stroke();
-    ctx.font = "20px Trebuchet MS";
+    ctx.font = "20px JetBrains Mono";
     ctx.fillStyle = "#f0c";
     let ratioLbl = positionLabel(x, MID_Y-90, deg.fractionText, "ratio", placedLabels);
     ratioLbl.degree = deg;
     drawLabel(ratioLbl);
-    ctx.font = "20px Trebuchet MS";
+    ctx.font = "20px JetBrains Mono";
     ctx.fillStyle = "#0ff";
     let freqVal = deg.floatVal * tonic;
     let freqStr = freqVal.toFixed(2)+" Hz";
@@ -820,13 +839,13 @@ function drawLabel(label){
   let cy = y + h/2;
   ctx.save();
   if(kind==="interval"){
-    ctx.font = "20px Trebuchet MS";
+    ctx.font = "20px JetBrains Mono";
     ctx.fillStyle = "#fffbcc";
   } else if(kind==="ratio"){
-    ctx.font = "20px Trebuchet MS";
+    ctx.font = "20px JetBrains Mono";
     ctx.fillStyle = "#f0c";
   } else if(kind==="freq"){
-    ctx.font = "20px Trebuchet MS";
+    ctx.font = "20px JetBrains Mono";
     ctx.fillStyle = "#0ff";
   }
   ctx.textAlign = "center";
