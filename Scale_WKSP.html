@@ -121,7 +121,7 @@
 
 <div class="controls">
   <label>Tonic Frequency:</label>
-  <input id="tonicInput" type="number" value="130.81" step="0.01" />
+  
   <select id="noteSelect">
     <option value="110.00">A2 (~110.00 Hz)</option>
     <option value="116.54">A#2 (~116.54 Hz)</option>
@@ -149,6 +149,7 @@
     <option value="415.30">G#4 (~415.30 Hz)</option>
     <option value="440.00">A4 (~440.00 Hz)</option>
   </select>
+  <input id="tonicInput" type="number" value="130.81" step="0.01" />
   <button id="setTonicBtn">Set Tonic</button>
   <div class="spacer"></div>
   <label>New Interval (1 < x < 2):</label>
@@ -287,6 +288,11 @@ function init(){
       return;
     }
     tonic=val;
+  });
+
+  noteSelect.addEventListener("change", () => {
+  tonic = parseFloat(noteSelect.value);
+  tonicInput.value = noteSelect.value;
   });
 
   // Add Interval
@@ -643,14 +649,17 @@ function drawLabel(label){
   }
   // freq => chord
   else if(kind==="freq"){
-  registerClickable(x, y, w, h, ()=>{
-    triggerGlow(label.degree);
-    let baseDeg = label.degree;
-    let freq = baseDeg.floatVal * tonic;
-    let others = scaleDegrees.filter(d => d.selected && d !== baseDeg);
-    let allFreqs = [freq, ...others.map(o => o.floatVal * tonic)];
-    playNotesSimult(allFreqs);
-  });
+    registerClickable(x, y, w, h, ()=>{
+  let baseDeg = label.degree;
+  // Trigger glow for the clicked note
+  triggerGlow(baseDeg);
+  // Trigger glow for all selected notes
+  let others = scaleDegrees.filter(d => d.selected && d !== baseDeg);
+  others.forEach(deg => triggerGlow(deg));
+  let allFreqs = [baseDeg.floatVal * tonic, ...others.map(o => o.floatVal * tonic)];
+  playNotesSimult(allFreqs);
+});
+
 }
 
 }
