@@ -1,1003 +1,1078 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;600;700&display=swap" rel="stylesheet">
-<title>Everything Under $12</title>
-<style>
-  body {
-    margin: 0;
-    padding: 0;
-    background: #0b0f1a;
-    color: #e0e0e0;
-    font-family: 'JetBrains Mono', monospace;
-    text-transform: uppercase;
-    font-size: 1.2rem;
-  }
-  header {
-    padding: 1rem;
-    background: linear-gradient(90deg, #112, #224);
-    color: #00ffe0;
-    font-weight: 700;
-    text-shadow: 1px 1px #000;
-    border-bottom: 2px solid #18e3ea;
-    font-size: 2rem;
-  }
-
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-  }
-  .spacer {
-    width: 100px;
-  }
-
-  label, input, select, button {
-    font-family: 'JetBrains Mono', monospace;
-    text-transform: uppercase;
-  }
-
-  input[type="number"], input[type="text"] {
-    padding: 10px;
-    height: 40px;
-    width: 90px;
-    border: 1px solid #444;
-    background: #101828;
-    color: #ccffff;
-    outline: none;
-    border-radius: 0;
-    box-sizing: border-box;
-    -webkit-appearance: none;
-    -moz-appearance: textfield;
-    font-size: 0.9rem;
-  }
-
-  select {
-    padding: 10px 20px 10px 10px;
-    height: 40px;
-    border: 1px solid #333;
-    background: #101828 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path fill="%2399ffff" d="M0 0l5 6 5-6z"/></svg>') no-repeat right 10px center;
-    background-size: 10px 6px;
-    color: #99ffff;
-    border-radius: 0;
-    box-sizing: border-box;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    font-size: 0.9rem;
-  }
-
-  button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-transform: uppercase;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 300;
-    font-size: 1rem;
-    padding: 10px 1rem;
-    height: 40px;
-    background: #0fd2ba;
-    color: #002;
-    border: 2px solid #09aa9a;
-    cursor: pointer;
-    box-shadow: 2px 2px 4px #000;
-    border-radius: 0;
-  }
-
-  button:hover {
-    background: #00ffe0;
-    color: #002;
-  }
-  button:disabled {
-    background: #444;
-    color: #999;
-    border-color: #666;
-    cursor: not-allowed;
-  }
-
-  #canvas-container {
-    width: 100%;
-    margin: 0;
-    padding: 2rem;
-    background: #0b0f1a;
-    box-sizing: border-box;
-  }
-  #scale-canvas {
-    display: block;
-    width: 100%;
-    height: 50vh;
-    background: linear-gradient(270deg, rgb(25, 13, 52), rgb(49, 25, 77));
-  }
-</style>
+  <meta charset="UTF-8" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;600;700&display=swap" rel="stylesheet">
+  <title>Everything Under $12</title>
+  <style>
+    /* CSS remains mostly as-is; you might also consider using CSS variables for colors */
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0b0f1a;
+      color: #e0e0e0;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      font-size: 1.2rem;
+    }
+    header {
+      padding: 1rem;
+      background: linear-gradient(90deg, #112, #224);
+      color: #00ffe0;
+      font-weight: 700;
+      text-shadow: 1px 1px #000;
+      border-bottom: 2px solid #18e3ea;
+      font-size: 2rem;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    .spacer {
+      width: 100px;
+    }
+    label, input, select, button {
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+    }
+    input[type="number"], input[type="text"] {
+      padding: 10px;
+      height: 40px;
+      width: 90px;
+      border: 1px solid #444;
+      background: #101828;
+      color: #ccffff;
+      outline: none;
+      border-radius: 0;
+      box-sizing: border-box;
+      -webkit-appearance: none;
+      -moz-appearance: textfield;
+      font-size: 0.9rem;
+    }
+    select {
+      padding: 10px 20px 10px 10px;
+      height: 40px;
+      border: 1px solid #333;
+      background: #101828 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path fill="%2399ffff" d="M0 0l5 6 5-6z"/></svg>') no-repeat right 10px center;
+      background-size: 10px 6px;
+      color: #99ffff;
+      border-radius: 0;
+      box-sizing: border-box;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      font-size: 0.9rem;
+    }
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 300;
+      font-size: 1rem;
+      padding: 10px 1rem;
+      height: 40px;
+      background: #0fd2ba;
+      color: #002;
+      border: 2px solid #09aa9a;
+      cursor: pointer;
+      box-shadow: 2px 2px 4px #000;
+      border-radius: 0;
+    }
+    button:hover {
+      background: #00ffe0;
+      color: #002;
+    }
+    button:disabled {
+      background: #444;
+      color: #999;
+      border-color: #666;
+      cursor: not-allowed;
+    }
+    #canvas-container {
+      width: 100%;
+      margin: 0;
+      padding: 2rem;
+      background: #0b0f1a;
+      box-sizing: border-box;
+    }
+    #scale-canvas {
+      display: block;
+      width: 100%;
+      height: 50vh;
+      background: linear-gradient(270deg, rgb(25, 13, 52), rgb(49, 25, 77));
+    }
+  </style>
 </head>
 <body>
-<header>
-  <h1>Everything Under $12</h1>
-</header>
+  <header>
+    <h1>Everything Under $12</h1>
+  </header>
 
-<div class="controls">
-  <label>Tonic Frequency:</label>
-  
-  <select id="noteSelect">
-    <option value="110.00">A2 (~110.00 Hz)</option>
-    <option value="116.54">A#2 (~116.54 Hz)</option>
-    <option value="123.47">B2 (~123.47 Hz)</option>
-    <option value="130.81" selected>C3 (~130.81 Hz)</option>
-    <option value="138.59">C#3 (~138.59 Hz)</option>
-    <option value="146.83">D3 (~146.83 Hz)</option>
-    <option value="155.56">D#3 (~155.56 Hz)</option>
-    <option value="164.81">E3 (~164.81 Hz)</option>
-    <option value="174.61">F3 (~174.61 Hz)</option>
-    <option value="185.00">F#3 (~185.00 Hz)</option>
-    <option value="196.00">G3 (~196.00 Hz)</option>
-    <option value="207.65">G#3 (~207.65 Hz)</option>
-    <option value="220.00">A3 (~220.00 Hz)</option>
-    <option value="233.08">A#3 (~233.08 Hz)</option>
-    <option value="246.94">B3 (~246.94 Hz)</option>
-    <option value="261.63">C4 (~261.63 Hz)</option>
-    <option value="277.18">C#4 (~277.18 Hz)</option>
-    <option value="293.66">D4 (~293.66 Hz)</option>
-    <option value="311.13">D#4 (~311.13 Hz)</option>
-    <option value="329.63">E4 (~329.63 Hz)</option>
-    <option value="349.23">F4 (~349.23 Hz)</option>
-    <option value="369.99">F#4 (~369.99 Hz)</option>
-    <option value="392.00">G4 (~392.00 Hz)</option>
-    <option value="415.30">G#4 (~415.30 Hz)</option>
-    <option value="440.00">A4 (~440.00 Hz)</option>
-  </select>
-  <input id="tonicInput" type="number" value="130.81" step="0.01" />
-  <button id="setTonicBtn">Set Tonic</button>
-  <div class="spacer"></div>
-  <label>New Interval (1 < x < 2):</label>
-  <input id="intervalInput" type="text" placeholder="3/2 or 1.414" />
-  <button id="addIntervalBtn">Add Interval</button>
-  <button id="clearAllBtn">Clear All</button>
-  <div class="spacer"></div>
-  <label>Scale Presets:</label>
-  <select id="presetSelect">
-    <optgroup label="Harmonic">
-      <option value="harmonic-4">4 partials</option>
-      <option value="harmonic-5">5 partials</option>
-      <option value="harmonic-6">6 partials</option>
-      <option value="harmonic-7">7 partials</option>
-      <option value="harmonic-8">8 partials</option>
-      <option value="harmonic-9">9 partials</option>
-      <option value="harmonic-10">10 partials</option>
-      <option value="harmonic-11">11 partials</option>
-      <option value="harmonic-12">12 partials</option>
-      <option value="harmonic-13">13 partials</option>
-      <option value="harmonic-14">14 partials</option>
-      <option value="harmonic-15">15 partials</option>
-      <option value="harmonic-16">16 partials</option>
-      <option value="harmonic-17">17 partials</option>
-      <option value="harmonic-18">18 partials</option>
-      <option value="harmonic-19">19 partials</option>
-      <option value="harmonic-20">20 partials</option>
-      <option value="harmonic-21">21 partials</option>
-      <option value="harmonic-22">22 partials</option>
-      <option value="harmonic-23">23 partials</option>
-      <option value="harmonic-24">24 partials</option>
-    </optgroup>
-    <optgroup label="Equal Temper">
-      <option value="equal-2">2 TET</option>
-      <option value="equal-3">3 TET</option>
-      <option value="equal-4">4 TET</option>
-      <option value="equal-5">5 TET</option>
-      <option value="equal-6">6 TET</option>
-      <option value="equal-7">7 TET</option>
-      <option value="equal-8">8 TET</option>
-      <option value="equal-9">9 TET</option>
-      <option value="equal-10">10 TET</option>
-      <option value="equal-11">11 TET</option>
-      <option value="equal-12">12 TET</option>
-      <option value="equal-13">13 TET</option>
-      <option value="equal-18">18 TET</option>
-      <option value="equal-19">19 TET</option>
-      <option value="equal-22">22 TET</option>
-      <option value="equal-24">24 TET</option>
-      <option value="equal-27">27 TET</option>
-      <option value="equal-28">28 TET</option>
-      <option value="equal-29">29 TET</option>
-      <option value="equal-31">31 TET</option>
-    </optgroup>
-    <optgroup label="Custom">
-      <option value="custom-comingsoon">Coming soon!</option>
-    </optgroup>
-  </select>
-  <button id="playScaleBtn">Play Scale</button>
-</div>
+  <div class="controls">
+    <label>Tonic Frequency:</label>
+    <select id="noteSelect">
+      <option value="110.00">A2 (~110.00 Hz)</option>
+      <option value="116.54">A#2 (~116.54 Hz)</option>
+      <option value="123.47">B2 (~123.47 Hz)</option>
+      <option value="130.81" selected>C3 (~130.81 Hz)</option>
+      <option value="138.59">C#3 (~138.59 Hz)</option>
+      <option value="146.83">D3 (~146.83 Hz)</option>
+      <option value="155.56">D#3 (~155.56 Hz)</option>
+      <option value="164.81">E3 (~164.81 Hz)</option>
+      <option value="174.61">F3 (~174.61 Hz)</option>
+      <option value="185.00">F#3 (~185.00 Hz)</option>
+      <option value="196.00">G3 (~196.00 Hz)</option>
+      <option value="207.65">G#3 (~207.65 Hz)</option>
+      <option value="220.00">A3 (~220.00 Hz)</option>
+      <option value="233.08">A#3 (~233.08 Hz)</option>
+      <option value="246.94">B3 (~246.94 Hz)</option>
+      <option value="261.63">C4 (~261.63 Hz)</option>
+      <option value="277.18">C#4 (~277.18 Hz)</option>
+      <option value="293.66">D4 (~293.66 Hz)</option>
+      <option value="311.13">D#4 (~311.13 Hz)</option>
+      <option value="329.63">E4 (~329.63 Hz)</option>
+      <option value="349.23">F4 (~349.23 Hz)</option>
+      <option value="369.99">F#4 (~369.99 Hz)</option>
+      <option value="392.00">G4 (~392.00 Hz)</option>
+      <option value="415.30">G#4 (~415.30 Hz)</option>
+      <option value="440.00">A4 (~440.00 Hz)</option>
+    </select>
+    <input id="tonicInput" type="number" value="130.81" step="0.01" />
+    <button id="setTonicBtn">Set Tonic</button>
+    <div class="spacer"></div>
+    <label>Enter Interval (1 < x < 2) (ex: 3/2, 1.614, 2^(1/12):</label>
+    <input id="intervalInput" type="text" />
+    <button id="addIntervalBtn">Add Interval</button>
+    <button id="clearAllBtn">Clear All</button>
+    <div class="spacer"></div>
+    <label>Scale Presets:</label>
+    <select id="presetSelect">
+      <optgroup label="Harmonic">
+        <option value="harmonic-4">4 partials</option>
+        <option value="harmonic-5">5 partials</option>
+        <option value="harmonic-6">6 partials</option>
+        <option value="harmonic-7">7 partials</option>
+        <option value="harmonic-8">8 partials</option>
+        <option value="harmonic-9">9 partials</option>
+        <option value="harmonic-10">10 partials</option>
+        <option value="harmonic-11">11 partials</option>
+        <option value="harmonic-12">12 partials</option>
+        <option value="harmonic-13">13 partials</option>
+        <option value="harmonic-14">14 partials</option>
+        <option value="harmonic-15">15 partials</option>
+        <option value="harmonic-16">16 partials</option>
+        <option value="harmonic-17">17 partials</option>
+        <option value="harmonic-18">18 partials</option>
+        <option value="harmonic-19">19 partials</option>
+        <option value="harmonic-20">20 partials</option>
+        <option value="harmonic-21">21 partials</option>
+        <option value="harmonic-22">22 partials</option>
+        <option value="harmonic-23">23 partials</option>
+        <option value="harmonic-24">24 partials</option>
+      </optgroup>
+      <optgroup label="Equal Temper">
+        <option value="equal-2">2 TET</option>
+        <option value="equal-3">3 TET</option>
+        <option value="equal-4">4 TET</option>
+        <option value="equal-5">5 TET</option>
+        <option value="equal-6">6 TET</option>
+        <option value="equal-7">7 TET</option>
+        <option value="equal-8">8 TET</option>
+        <option value="equal-9">9 TET</option>
+        <option value="equal-10">10 TET</option>
+        <option value="equal-11">11 TET</option>
+        <option value="equal-12">12 TET</option>
+        <option value="equal-13">13 TET</option>
+        <option value="equal-18">18 TET</option>
+        <option value="equal-19">19 TET</option>
+        <option value="equal-22">22 TET</option>
+        <option value="equal-24">24 TET</option>
+        <option value="equal-27">27 TET</option>
+        <option value="equal-28">28 TET</option>
+        <option value="equal-29">29 TET</option>
+        <option value="equal-31">31 TET</option>
+      </optgroup>
+      <optgroup label="Custom">
+        <option value="custom-comingsoon">Coming soon!</option>
+      </optgroup>
+    </select>
+    <button id="playScaleBtn">Play Scale</button>
+  </div>
 
-<div id="canvas-container">
-  <canvas id="scale-canvas"></canvas>
-</div>
+  <div id="canvas-container">
+    <canvas id="scale-canvas"></canvas>
+  </div>
 
-<div class="controls">
-  <button id="saveBtn">Save</button>
-  <button id="loadBtn">Load</button>
-  <input type="file" id="fileInput" accept="application/json" style="display:none" />
-  <label for="formatSelect">Format:</label>
-  <select id="formatSelect">
-    <option value="json">JSON</option>
-    <option value="scl">SCL only</option>
-    <option value="scl_kbm">SCL + KBM</option>
-    <option value="tun">TUN (AnaMark)</option>
-  </select>
-  <div class="spacer"></div>
-  <label for="refMidiNoteInput">Ref MIDI note:</label>
-  <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
-  <label for="refFreqInput">Ref freq (Hz):</label>
-  <input id="refFreqInput" type="number" value="261.63" step="0.01" />
-  <label for="lowestNoteInput">Lowest MIDI note:</label>
-  <input id="lowestNoteInput" type="number" value="0" min="0" max="127" />
-  <label for="highestNoteInput">Highest MIDI note:</label>
-  <input id="highestNoteInput" type="number" value="127" min="0" max="127" />
-</div>
+  <div class="controls">
+    <button id="saveBtn">Save</button>
+    <button id="loadBtn">Load</button>
+    <input type="file" id="fileInput" accept="application/json" style="display:none" />
+    <label for="formatSelect">Format:</label>
+    <select id="formatSelect">
+      <option value="json">JSON</option>
+      <option value="scl">SCL only</option>
+      <option value="scl_kbm">SCL + KBM</option>
+      <option value="tun">TUN (AnaMark)</option>
+    </select>
+    <div class="spacer"></div>
+    <label for="refMidiNoteInput">Ref MIDI note:</label>
+    <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
+    <label for="refFreqInput">Ref freq (Hz):</label>
+    <input id="refFreqInput" type="number" value="261.63" step="0.01" />
+    <label for="lowestNoteInput">Lowest MIDI note:</label>
+    <input id="lowestNoteInput" type="number" value="0" min="0" max="127" />
+    <label for="highestNoteInput">Highest MIDI note:</label>
+    <input id="highestNoteInput" type="number" value="127" min="0" max="127" />
+  </div>
 
-<script>
-// EXACT same logic as described in the previous messages
-// but placed in a single code block with a continuous animation.
-
-//////////////////////////////////////////////////////////////////////////
-// Data + Setup
-//////////////////////////////////////////////////////////////////////////
-let scaleDegrees = [
-  { fractionText: "1/1", floatVal: 1.0, selected: false },
-  { fractionText: "2/1", floatVal: 2.0, selected: false }
-];
-let tonic = 261.63;
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let isPlaying = false;
-
-// DRAG + SNAP
-let draggingMarker = null;
-const DRAG_TOLERANCE = 10;
-let LEFT_X=0, RIGHT_X=0, MID_Y=0, WIDTH=0;
-
-// ephemeral fade
-const GLOW_FADE_DURATION = 600;
-const MAX_DEN = 16;
-const SNAP_THRESHOLD_CENTS = 10;
-let snapCandidates = [];
-
-const canvas = document.getElementById("scale-canvas");
-const ctx = canvas.getContext("2d");
-let clickableRegions = [];
-
-function animate(){
-  requestAnimationFrame(animate);
-  renderScale();
-}
-
-window.addEventListener("DOMContentLoaded", init);
-
-function init(){
-  // Basic
-  const noteSelect = document.getElementById("noteSelect");
-  const tonicInput = document.getElementById("tonicInput");
-  tonic = parseFloat(noteSelect.value);
-  tonicInput.value = noteSelect.value;
-
-  document.getElementById("setTonicBtn").addEventListener("click",()=>{
-    let val=parseFloat(tonicInput.value);
-    if(!isFinite(val)||val<=0){
-      alert("Tonic must be positive.");
-      return;
-    }
-    tonic=val;
-  });
-
-  noteSelect.addEventListener("change", () => {
-  tonic = parseFloat(noteSelect.value);
-  tonicInput.value = noteSelect.value;
-  });
-
-  // Add Interval
-  const intervalInput=document.getElementById("intervalInput");
-  document.getElementById("addIntervalBtn").addEventListener("click", () => {
-  const intervalInput = document.getElementById("intervalInput");
-  let text = intervalInput.value.trim();
-  console.log("Add Interval clicked, input:", text);
-  if (!text) {
-    alert("Enter ratio, e.g. 3/2 or 1.414");
-    return;
-  }
-  let r = parseFractionOrDecimal(text);
-  console.log("Parsed ratio:", r);
-  if (!isFinite(r) || r <= 1 || r >= 2) {
-    alert("Ratio must be >1 and <2");
-    return;
-  }
-  let exist = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
-  console.log("Does ratio exist already?", exist);
-  if (!exist) {
-    scaleDegrees.push({
-      fractionText: text,
-      floatVal: r,
-      selected: false,
-      glowStart: performance.now(),
-      glowActive: true
-    });
-    scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
-    console.log("Updated scaleDegrees:", scaleDegrees);
-  }
-});
-
-
-  // Clear All
-  document.getElementById("clearAllBtn").addEventListener("click",()=>{
-    scaleDegrees=scaleDegrees.filter(d=>d.floatVal===1||d.floatVal===2);
-  });
-
-  // Play Scale
-  document.getElementById("playScaleBtn").addEventListener("click",async()=>{
-    if(isPlaying)return;
-    isPlaying=true;
-    setControlsEnabled(false);
-    await playScaleOnce();
-    setControlsEnabled(true);
-    isPlaying=false;
-  });
-
-  // Presets
-  const presetSelect=document.getElementById("presetSelect");
-  presetSelect.addEventListener("change",applyPresetSelection);
-
-  // Save/Load
-  document.getElementById("saveBtn").addEventListener("click",doSave);
-  const fileInput=document.getElementById("fileInput");
-  document.getElementById("loadBtn").addEventListener("click",()=>{
-    fileInput.click();
-  });
-  fileInput.addEventListener("change",evt=>{
-    doLoad(evt.target.files);
-    fileInput.value="";
-  });
-
-  initSnapCandidates();
-  resizeCanvas();
-  canvas.addEventListener("mousedown",onCanvasMouseDown);
-  canvas.addEventListener("mousemove",onCanvasMouseMove);
-  canvas.addEventListener("mouseup",()=>{
-    if(draggingMarker){
-      triggerGlow(draggingMarker);
-    }
-    draggingMarker=null;
-  });
-  canvas.addEventListener("mouseleave",()=>{
-    if(draggingMarker){
-      triggerGlow(draggingMarker);
-    }
-    draggingMarker=null;
-  });
-
-  // Start anim
-  requestAnimationFrame(animate);
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Snapping
-//////////////////////////////////////////////////////////////////////////
-function initSnapCandidates(){
-  snapCandidates=[];
-  for(let d=1; d<=MAX_DEN; d++){
-    for(let n=1; n<2*d;n++){
-      let ratio=n/d;
-      if(ratio<=1||ratio>=2)continue;
-      if(gcd(n,d)===1){
-        snapCandidates.push({ ratio, num:n, den:d });
+  <script>
+    //////////////////////////////////////////////////////////////////////////
+    // CONFIGURATION OBJECT: Centralizes all tweakable parameters.
+    //////////////////////////////////////////////////////////////////////////
+    const CONFIG = {
+      colors: {
+        background: "#0b0f1a",
+        text: "#e0e0e0",
+        header: {
+          backgroundGradient: "linear-gradient(90deg, #112, #224)",
+          color: "#00ffe0",
+          borderColor: "#18e3ea"
+        },
+        control: {
+          inputBackground: "#101828",
+          inputColor: "#ccffff",
+          selectBackground: "#101828",
+          selectColor: "#99ffff",
+          buttonBackground: "#0fd2ba",
+          buttonColor: "#002",
+          buttonBorder: "#09aa9a",
+          buttonHoverBackground: "#00ffe0"
+        },
+        canvas: {
+          gradientStart: "rgb(25, 13, 52)",
+          gradientEnd: "rgb(49, 25, 77)",
+          lineColor: "#0af",
+          verticalLineColor: "#66b0ff",
+          intervalLabel: "#fffbcc",
+          ratioLabel: "#f0c",
+          freqLabel: "#0ff"
+        },
+        particle: {
+          saturation: "100%",
+          lightness: "60%"
+        }
+      },
+      sizes: {
+        fontSize: "1.2rem",
+        headerFontSize: "2rem",
+        buttonHeight: 40,
+        inputHeight: 40,
+        canvasHeight: "50vh"
+      },
+      particle: {
+        defaultCount: 50,
+        stdev: 15,
+        velocityScale: 0.2,
+        lifetimeBase: 1000,
+        lifetimeRandom: 1000,
+        initialSize: 2,
+        shrinkAmount: 1.5
+      },
+      effects: {
+        dragTolerance: 10,
+        glowFadeDuration: 600,
+        snapThresholdCents: 10,
+        glowRadiusMultiplier: 60
+      },
+      geometry: {
+        leftMarginRatio: 0.08,
+        rightMarginRatio: 0.92
+      },
+      audio: {
+        oscillatorType: "triangle",
+        baseAmp: 0.2,
+        maxAmp: 0.8
+      },
+      math: {
+        maxDen: 16
       }
-    }
-  }
-  snapCandidates.sort((a,b)=>a.ratio-b.ratio);
-}
-function gcd(a,b){
-  if(!b)return a;
-  return gcd(b,a%b);
-}
-function maybeSnap(ratio){
-  let bestRatio=ratio;
-  let bestCentsDiff=Infinity;
-  for(let cand of snapCandidates){
-    let centsDiff=1200*Math.abs(Math.log2(ratio/cand.ratio));
-    if(centsDiff<SNAP_THRESHOLD_CENTS&&centsDiff<bestCentsDiff){
-      bestCentsDiff=centsDiff;
-      bestRatio=cand.ratio;
-    }
-  }
-  return bestRatio;
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Glowing
-//////////////////////////////////////////////////////////////////////////
-function triggerGlow(deg){
-  deg.glowStart=performance.now();
-  deg.glowActive=true;
-}
-function ratioToHue(ratio){
-  let t=ratio-1;
-  return 300*t; // 1->0, 2->300
-}
-function getGlowRadiusAlpha(deg, now){
-  if(draggingMarker===deg)return[60,1.0];
-  if(!deg.glowActive)return[0,0];
-  if(!deg.glowStart)return[0,0];
-  let elapsed=now-deg.glowStart;
-  if(elapsed>GLOW_FADE_DURATION){
-    deg.glowActive=false;
-    return[0,0];
-  }
-  let frac=1-(elapsed/GLOW_FADE_DURATION);
-  let radius=60*frac;
-  let alpha=frac;
-  return[radius,alpha];
-}
-function drawGlow(ctx,x,y,ratio,radius,alpha){
-  let hue=ratioToHue(ratio);
-  let gradient=ctx.createRadialGradient(x,y,0,x,y,radius);
-  gradient.addColorStop(0,`hsla(${hue},100%,50%,${alpha})`);
-  gradient.addColorStop(1,"transparent");
-  ctx.save();
-  ctx.fillStyle=gradient;
-  ctx.beginPath();
-  ctx.arc(x,y,radius,0,Math.PI*2);
-  ctx.fill();
-  ctx.restore();
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Render
-//////////////////////////////////////////////////////////////////////////
-function resizeCanvas(){
-  canvas.width=canvas.clientWidth;
-  canvas.height=canvas.clientHeight;
-}
-function renderScale(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  clickableRegions=[];
-  LEFT_X=0.08*canvas.width;
-  RIGHT_X=0.92*canvas.width;
-  MID_Y=canvas.height/2;
-  WIDTH=RIGHT_X-LEFT_X;
-
-  ctx.strokeStyle="#0af";
-  ctx.lineWidth=3;
-  ctx.beginPath();
-  ctx.moveTo(LEFT_X,MID_Y);
-  ctx.lineTo(RIGHT_X,MID_Y);
-  ctx.stroke();
-
-  scaleDegrees.sort((a,b)=>a.floatVal-b.floatVal);
-  let placedLabels=[];
-  ctx.font="20px JetBrains Mono";
-  ctx.fillStyle="#fffbcc";
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-
-  // intervals
-  for(let i=0;i<scaleDegrees.length-1;i++){
-    let leftVal=scaleDegrees[i].floatVal;
-    let rightVal=scaleDegrees[i+1].floatVal;
-    let gap=rightVal/leftVal;
-    let mid=(leftVal+rightVal)/2;
-    let midX=ratioToX(mid,LEFT_X,WIDTH);
-    let gapStr=fractionStringApprox(gap);
-    let lbl=positionLabel(midX,MID_Y-50,gapStr,"interval",placedLabels);
-    drawLabel(lbl);
-  }
-
-  let now=performance.now();
-
-  // scale degrees
-  for(let deg of scaleDegrees){
-    let x=ratioToX(deg.floatVal,LEFT_X,WIDTH);
-
-    // glow
-    let[r,a]=getGlowRadiusAlpha(deg,now);
-    if(r>0 && a>0){
-      drawGlow(ctx,x,MID_Y,deg.floatVal,r,a);
-    }
-
-    // vertical line
-    ctx.strokeStyle="#66b0ff";
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    ctx.moveTo(x,MID_Y-70);
-    ctx.lineTo(x,MID_Y+70);
-    ctx.stroke();
-
-    // ratio
-    ctx.font="20px JetBrains Mono";
-    ctx.fillStyle="#f0c";
-    let ratioLbl=positionLabel(x,MID_Y-90,deg.fractionText,"ratio",placedLabels);
-    ratioLbl.degree=deg;
-    drawLabel(ratioLbl);
-
-    // freq
-    ctx.font="20px JetBrains Mono";
-    ctx.fillStyle="#0ff";
-    let freqVal=deg.floatVal*tonic;
-    let freqStr=freqVal.toFixed(2)+" Hz";
-    let freqLbl=positionLabel(x,MID_Y+90,freqStr,"freq",placedLabels,true);
-    freqLbl.degree=deg;
-    drawLabel(freqLbl);
-
-    // checkbox
-    let checkBoxSize=20;
-    let checkBoxX=x-checkBoxSize/2;
-    let checkBoxY=ratioLbl.y-30;
-    registerClickable(checkBoxX,checkBoxY,checkBoxSize,checkBoxSize,()=>{
-      deg.selected=!deg.selected;
-    });
-    ctx.save();
-    ctx.strokeStyle="#f0c";
-    ctx.lineWidth=2;
-    ctx.strokeRect(checkBoxX,checkBoxY,checkBoxSize,checkBoxSize);
-    if(deg.selected){
-      ctx.beginPath();
-      ctx.moveTo(checkBoxX,checkBoxY);
-      ctx.lineTo(checkBoxX+checkBoxSize,checkBoxY+checkBoxSize);
-      ctx.moveTo(checkBoxX+checkBoxSize,checkBoxY);
-      ctx.lineTo(checkBoxX,checkBoxY+checkBoxSize);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-}
-
-function ratioToX(r,leftX,width){
-  let t=(r-1)/(2-1);
-  return leftX+t*width;
-}
-function xToRatio(mouseX){
-  return 1+((mouseX-LEFT_X)/WIDTH);
-}
-function fractionStringApprox(x){
-  const maxDenom=1000000;
-  const [num,den]=bestRationalApproximation(x,maxDenom);
-  const approx=num/den;
-  const error=Math.abs(x-approx);
-  let result=`${num}/${den}`;
-  if(error>0.01)result="~"+result;
-  return result;
-}
-function bestRationalApproximation(x,maxDenom){
-  let pPrevPrev=0,pPrev=1;
-  let qPrevPrev=1,qPrev=0;
-  let fraction=x;
-  let a=Math.floor(fraction);
-  let p=a*pPrev+pPrevPrev;
-  let q=a*qPrev+qPrevPrev;
-  while(true){
-    let remainder=fraction-a;
-    if(Math.abs(remainder)<1e-12)break;
-    fraction=1/remainder;
-    a=Math.floor(fraction);
-    let pNext=a*p+pPrev;
-    let qNext=a*q+qPrev;
-    if(qNext>maxDenom)break;
-    pPrev=p;qPrev=q;
-    p=pNext;q=qNext;
-  }
-  return[p,q];
-}
-
-function positionLabel(cx,cy,text,kind,placedLabels,below=false){
-  let metrics=ctx.measureText(text);
-  let textHeight=(kind==="interval"?30:(kind==="ratio"?24:28));
-  let textWidth=metrics.width;
-  let labelY=cy;
-  let step=below?5:-5;
-  let attempts=40;
-  for(let i=0;i<attempts;i++){
-    let x0=cx-textWidth/2;
-    let y0=labelY-textHeight/2;
-    let box={x:x0,y:y0,w:textWidth,h:textHeight};
-    if(!collides(box,placedLabels)){
-      placedLabels.push(box);
-      return{x:x0,y:y0,w:textWidth,h:textHeight,text,kind};
-    }
-    labelY+=step;
-  }
-  let x0=cx-textWidth/2;
-  let y0=cy-textHeight/2;
-  placedLabels.push({x:x0,y:y0,w:textWidth,h:textHeight});
-  return{x:x0,y:y0,w:textWidth,h:textHeight,text,kind};
-}
-function collides(box,boxes){
-  for(let b of boxes){
-    if(!(box.x+box.w<b.x||box.x>b.x+b.w||
-         box.y+box.h<b.y||box.y>b.y+b.h)){
-      return true;
-    }
-  }
-  return false;
-}
-function drawLabel(label){
-  const{x,y,w,h,text,kind}=label;
-  let cx=x+w/2;
-  let cy=y+h/2;
-  ctx.save();
-  if(kind==="interval"){
-    ctx.font="20px JetBrains Mono";
-    ctx.fillStyle="#fffbcc";
-  } else if(kind==="ratio"){
-    ctx.font="20px JetBrains Mono";
-    ctx.fillStyle="#f0c";
-  } else if(kind==="freq"){
-    ctx.font="20px JetBrains Mono";
-    ctx.fillStyle="#0ff";
-  }
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  ctx.fillText(text,cx,cy);
-  ctx.restore();
-
-  // ratio => remove
-  if(kind==="ratio"){
-    registerClickable(x,y,w,h,()=>{
-      if(label.degree.floatVal===1||label.degree.floatVal===2)return;
-      let ok=confirm(`Delete "${label.degree.fractionText}"?`);
-      if(ok){
-        scaleDegrees=scaleDegrees.filter(d=>d!==label.degree);
-      }
-    });
-  }
-  // freq => chord
-  else if(kind==="freq"){
-    registerClickable(x, y, w, h, ()=>{
-  let baseDeg = label.degree;
-  // Trigger glow for the clicked note
-  triggerGlow(baseDeg);
-  // Trigger glow for all selected notes
-  let others = scaleDegrees.filter(d => d.selected && d !== baseDeg);
-  others.forEach(deg => triggerGlow(deg));
-  let allFreqs = [baseDeg.floatVal * tonic, ...others.map(o => o.floatVal * tonic)];
-  playNotesSimult(allFreqs);
-});
-
-}
-
-}
-
-function registerClickable(x,y,w,h,callback){
-  clickableRegions.push({x,y,w,h,callback});
-}
-function parseFractionOrDecimal(s) {
-  s = s.trim();
-  if (s.includes("^")) {
-    let match = s.match(/^(.+)\^(.+)$/);
-    if (!match) return NaN;
-    let baseStr = match[1].replace(/^\(+/, "").replace(/\)+$/, "");
-    let expStr  = match[2].replace(/^\(+/, "").replace(/\)+$/, "");
-    let baseVal = parseFractionOrDecimal(baseStr);
-    let expVal  = parseFractionOrDecimal(expStr);
-    if (!isFinite(baseVal) || !isFinite(expVal)) return NaN;
-    return Math.pow(baseVal, expVal);
-  }
-  if (s.includes("/")) {
-    let parts = s.split("/");
-    if (parts.length !== 2) return NaN;
-    let num = parseFloat(parts[0]);
-    let den = parseFloat(parts[1]);
-    if (!isFinite(num) || !isFinite(den) || den === 0) return NaN;
-    return num / den;
-  }
-  return parseFloat(s);
-}
-
-function onCanvasMouseDown(evt){
-  let rect=canvas.getBoundingClientRect();
-  let mx=evt.clientX-rect.left;
-  let my=evt.clientY-rect.top;
-  let marker=getMarkerAtPosition(mx,my);
-  if(marker){
-    draggingMarker=marker;
-    return;
-  }
-  for(let i=clickableRegions.length-1;i>=0;i--){
-    let r=clickableRegions[i];
-    if(mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h){
-      r.callback(evt);
-      break;
-    }
-  }
-}
-function onCanvasMouseMove(evt){
-  if(!draggingMarker)return;
-  let rect=canvas.getBoundingClientRect();
-  let mx=evt.clientX-rect.left;
-  let my=evt.clientY-rect.top;
-  let newRatio=xToRatio(mx);
-  newRatio=Math.max(1.0001,Math.min(newRatio,1.9999));
-  let snapped=maybeSnap(newRatio);
-  draggingMarker.floatVal=snapped;
-  draggingMarker.fractionText=fractionStringApprox(snapped);
-}
-
-function xToRatio(mouseX){
-  return 1+((mouseX-LEFT_X)/WIDTH);
-}
-function getMarkerAtPosition(mx,my){
-  for(let deg of scaleDegrees){
-    if(deg.floatVal===1||deg.floatVal===2)continue;
-    let lineX=ratioToX(deg.floatVal,LEFT_X,WIDTH);
-    let lineTop=MID_Y-70;
-    let lineBottom=MID_Y+70;
-    if(my>=lineTop&&my<=lineBottom&&Math.abs(mx-lineX)<=DRAG_TOLERANCE){
-      return deg;
-    }
-  }
-  return null;
-}
-
-function setControlsEnabled(enabled){
-  document.querySelectorAll(".controls button, .controls input, .controls select")
-    .forEach(el=>{el.disabled=!enabled;});
-}
-
-async function playScaleOnce(){
-  let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
-  let noteDur = 0.5;
-  for (let deg of sorted) {
-    // Trigger a fresh glow for this note.
-    triggerGlow(deg);
-    let freq = deg.floatVal * tonic;
-    await playOneNoteSequential(freq, noteDur);
-  }
-}
-
-
-function playOneNoteSequential(freq,duration){
-  return new Promise(async resolve=>{
-    if(audioCtx.state==="suspended"){
-      await audioCtx.resume();
-    }
-    const now=audioCtx.currentTime;
-    let osc=audioCtx.createOscillator();
-    let gain=audioCtx.createGain();
-    osc.type="triangle";
-    osc.frequency.setValueAtTime(freq,now);
-
-    let baseAmp=0.2;
-    let freqWeight=Math.sqrt(440/freq);
-    let finalAmp=baseAmp*freqWeight;
-    if(finalAmp>0.8)finalAmp=0.8;
-    gain.gain.setValueAtTime(finalAmp,now);
-    gain.gain.linearRampToValueAtTime(0,now+duration);
-
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.onended=()=>resolve();
-    osc.start(now);
-    osc.stop(now+duration);
-  });
-}
-
-async function playNotesSimult(freqArray){
-  if(audioCtx.state==="suspended"){
-    await audioCtx.resume();
-  }
-  let n=freqArray.length;
-  if(n<1)return;
-  const duration=1.0;
-  const maxAmp=0.8;
-  const now=audioCtx.currentTime;
-  for(let freq of freqArray){
-    let osc=audioCtx.createOscillator();
-    let gain=audioCtx.createGain();
-    osc.type="triangle";
-    osc.frequency.setValueAtTime(freq,now);
-
-    let baseAmp=0.2/n;
-    let freqWeight=Math.sqrt(440/freq);
-    let finalAmp=baseAmp*freqWeight;
-    if(finalAmp>maxAmp)finalAmp=maxAmp;
-    gain.gain.setValueAtTime(finalAmp,now);
-    gain.gain.linearRampToValueAtTime(0,now+duration);
-
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start(now);
-    osc.stop(now+duration);
-  }
-}
-
-// PRESETS
-function applyPresetSelection(){
-  const presetSelect=document.getElementById("presetSelect");
-  let val=presetSelect.value;
-  let[type,numStr]=val.split("-");
-  if(!type)return;
-  if(type==="custom"){
-    alert("Custom preset is not yet implemented. Coming soon!");
-    return;
-  }
-  let ok=confirm("This will overwrite current intervals. Continue?");
-  if(!ok)return;
-  scaleDegrees=[
-    {fractionText:"1/1",floatVal:1.0,selected:false},
-    {fractionText:"2/1",floatVal:2.0,selected:false}
-  ];
-
-  let n=parseInt(numStr,10);
-  if(type==="harmonic"){
-    for(let i=n+1;i<=2*n;i++){
-      let valf=i/n;
-      if(Math.abs(valf-1)<1e-7)continue;
-      if(Math.abs(valf-2)<1e-7)continue;
-      scaleDegrees.push({
-        fractionText:i+"/"+n,
-        floatVal:valf,
-        selected:false
-      });
-    }
-  }
-  else if(type==="equal"){
-    for(let k=1;k<n;k++){
-      let valf=Math.pow(2,k/n);
-      if(Math.abs(valf-1)<1e-7)continue;
-      if(Math.abs(valf-2)<1e-7)continue;
-      scaleDegrees.push({
-        fractionText:`2^(${k}/${n})`,
-        floatVal:valf,
-        selected:false
-      });
-    }
-  }
-  scaleDegrees.sort((a,b)=>a.floatVal-b.floatVal);
-}
-
-// SAVE/LOAD
-function doSave(){
-  const formatSelect=document.getElementById("formatSelect");
-  let format=formatSelect.value;
-  const refMidiNoteInput=document.getElementById("refMidiNoteInput");
-  const refFreqInput=document.getElementById("refFreqInput");
-  const lowestNoteInput=document.getElementById("lowestNoteInput");
-  const highestNoteInput=document.getElementById("highestNoteInput");
-  let refMidi=parseInt(refMidiNoteInput.value,10)||60;
-  let refFreq=parseFloat(refFreqInput.value)||261.63;
-  let lowestMidi=parseInt(lowestNoteInput.value,10)||0;
-  let highestMidi=parseInt(highestNoteInput.value,10)||127;
-  let fileContent="";
-  let fileExtension="";
-
-  if(format==="json"){
-    let data={
-      tonic:tonic,
-      scaleDegrees:scaleDegrees.map(d=>({
-        fractionText:d.fractionText,
-        floatVal:d.floatVal,
-        selected:d.selected
-      }))
     };
-    fileContent=JSON.stringify(data,null,2);
-    fileExtension="json";
-    downloadFile(fileContent,fileExtension);
-  }
-  else if(format==="scl"){
-    fileContent=generateSclFileContent("My Scale",scaleDegrees);
-    fileExtension="scl";
-    downloadFile(fileContent,fileExtension);
-  }
-  else if(format==="scl_kbm"){
-    let sclContent=generateSclFileContent("My Scale",scaleDegrees);
-    let kbmContent=generateKbmFileContent("My Scale Mapping",scaleDegrees,refMidi,refFreq,lowestMidi,highestMidi);
-    downloadFile(sclContent,"scl");
-    setTimeout(()=>downloadFile(kbmContent,"kbm"),500);
-  }
-  else if(format==="tun"){
-    fileContent=generateTunFileContent(scaleDegrees,refMidi,refFreq);
-    fileExtension="tun";
-    downloadFile(fileContent,fileExtension);
-  }
-}
-function downloadFile(content,extension){
-  let now=new Date();
-  let YYYY=now.getFullYear();
-  let MM=String(now.getMonth()+1).padStart(2,"0");
-  let DD=String(now.getDate()).padStart(2,"0");
-  let hh=String(now.getHours()).padStart(2,"0");
-  let mm=String(now.getMinutes()).padStart(2,"0");
-  let userCount=scaleDegrees.length-2;
-  let fileName=`scale-${YYYY}${MM}${DD}-${hh}${mm}-${userCount}.${extension}`;
 
-  let blob=new Blob([content],{type:"text/plain"});
-  let url=URL.createObjectURL(blob);
-  let a=document.createElement("a");
-  a.href=url;
-  a.download=fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-function doLoad(fileList){
-  if(!fileList||fileList.length<1)return;
-  let file=fileList[0];
-  let reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      let data=JSON.parse(e.target.result);
-      if(!data.scaleDegrees||!Array.isArray(data.scaleDegrees)){
-        alert("Invalid file format: no scaleDegrees array found.");
+    //////////////////////////////////////////////////////////////////////////
+    // Data + Setup
+    //////////////////////////////////////////////////////////////////////////
+    let scaleDegrees = [
+      { fractionText: "1/1", floatVal: 1.0, selected: false },
+      { fractionText: "2/1", floatVal: 2.0, selected: false }
+    ];
+    let tonic = 261.63;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let isPlaying = false;
+
+    // Particle system
+    let particles = [];
+
+    // Dragging and canvas globals
+    let draggingMarker = null;
+    let LEFT_X = 0, RIGHT_X = 0, MID_Y = 0, WIDTH = 0;
+    let clickableRegions = [];
+    let snapCandidates = [];
+
+    const canvas = document.getElementById("scale-canvas");
+    const ctx = canvas.getContext("2d");
+
+    window.addEventListener("DOMContentLoaded", init);
+    requestAnimationFrame(animate);
+
+    //////////////////////////////////////////////////////////////////////////
+    // Animation Loop
+    //////////////////////////////////////////////////////////////////////////
+    function animate(){
+      requestAnimationFrame(animate);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updateParticles();
+      drawParticles();
+      renderScale();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Initialization
+    //////////////////////////////////////////////////////////////////////////
+    function init(){
+      const noteSelect = document.getElementById("noteSelect");
+      const tonicInput = document.getElementById("tonicInput");
+      tonic = parseFloat(noteSelect.value);
+      tonicInput.value = noteSelect.value;
+      noteSelect.addEventListener("change", () => {
+        tonic = parseFloat(noteSelect.value);
+        tonicInput.value = noteSelect.value;
+      });
+      document.getElementById("setTonicBtn").addEventListener("click", () => {
+        let val = parseFloat(tonicInput.value);
+        if(!isFinite(val) || val <= 0){
+          alert("Tonic must be positive.");
+          return;
+        }
+        tonic = val;
+      });
+      const intervalInput = document.getElementById("intervalInput");
+      document.getElementById("addIntervalBtn").addEventListener("click", () => {
+        let text = intervalInput.value.trim();
+        if(!text){
+          alert("Enter ratio, e.g. 3/2 or 1.414");
+          return;
+        }
+        let r = parseFractionOrDecimal(text);
+        if(!isFinite(r) || r <= 1 || r >= 2){
+          alert("Ratio must be >1 and <2");
+          return;
+        }
+        let exist = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
+        if(!exist){
+          scaleDegrees.push({
+            fractionText: text,
+            floatVal: r,
+            selected: false,
+            glowStart: performance.now(),
+            glowActive: true
+          });
+          scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
+        }
+      });
+      document.getElementById("clearAllBtn").addEventListener("click", () => {
+        scaleDegrees = scaleDegrees.filter(d => d.floatVal === 1 || d.floatVal === 2);
+      });
+      document.getElementById("playScaleBtn").addEventListener("click", async () => {
+        if(isPlaying) return;
+        isPlaying = true;
+        setControlsEnabled(false);
+        await playScaleOnce();
+        setControlsEnabled(true);
+        isPlaying = false;
+      });
+      const presetSelect = document.getElementById("presetSelect");
+      presetSelect.addEventListener("change", applyPresetSelection);
+      document.getElementById("saveBtn").addEventListener("click", doSave);
+      const fileInput = document.getElementById("fileInput");
+      document.getElementById("loadBtn").addEventListener("click", () => { fileInput.click(); });
+      fileInput.addEventListener("change", evt => {
+        doLoad(evt.target.files);
+        fileInput.value = "";
+      });
+      initSnapCandidates();
+      resizeCanvas();
+      canvas.addEventListener("mousedown", onCanvasMouseDown);
+      canvas.addEventListener("mousemove", onCanvasMouseMove);
+      canvas.addEventListener("mouseup", () => {
+        if(draggingMarker) triggerGlow(draggingMarker);
+        draggingMarker = null;
+      });
+      canvas.addEventListener("mouseleave", () => {
+        if(draggingMarker) triggerGlow(draggingMarker);
+        draggingMarker = null;
+      });
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Particle System Functions
+    //////////////////////////////////////////////////////////////////////////
+    function createParticles(x, y, ratio, count = CONFIG.particle.defaultCount) {
+      let now = performance.now();
+      for(let i = 0; i < count; i++){
+        let [dx, dy] = sample2DNormal(0, CONFIG.particle.stdev);
+        let vx = CONFIG.particle.velocityScale * (Math.random() * 2 - 1);
+        let vy = CONFIG.particle.velocityScale * (Math.random() * 2 - 1);
+        let lifetime = CONFIG.particle.lifetimeBase + Math.random() * CONFIG.particle.lifetimeRandom;
+        let hue = ratioToHue(ratio);
+        let color = `hsl(${hue}, ${CONFIG.colors.particle.saturation}, ${CONFIG.colors.particle.lightness})`;
+        particles.push({ x: x + dx, y: y + dy, vx, vy, lifetime, born: now, color });
+      }
+    }
+
+    function sample2DNormal(mean, stdDev){
+      let u1 = Math.random(), u2 = Math.random();
+      let r = Math.sqrt(-2 * Math.log(u1));
+      let theta = 2 * Math.PI * u2;
+      return [r * Math.cos(theta) * stdDev + mean, r * Math.sin(theta) * stdDev + mean];
+    }
+
+    function updateParticles(){
+      let now = performance.now();
+      particles = particles.filter(p => (now - p.born) < p.lifetime);
+      for(let p of particles){
+        p.x += p.vx;
+        p.y += p.vy;
+      }
+    }
+
+    function drawParticles(){
+      let now = performance.now();
+      for(let p of particles){
+        let age = now - p.born;
+        let lifeFrac = age / p.lifetime;
+        if(lifeFrac > 1) lifeFrac = 1;
+        let alpha = 1 - lifeFrac;
+        let size = CONFIG.particle.initialSize - CONFIG.particle.shrinkAmount * lifeFrac;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Snapping and Glow Functions
+    //////////////////////////////////////////////////////////////////////////
+    function initSnapCandidates(){
+      snapCandidates = [];
+      for(let d = 1; d <= CONFIG.math.maxDen; d++){
+        for(let n = 1; n < 2 * d; n++){
+          let ratio = n / d;
+          if(ratio <= 1 || ratio >= 2) continue;
+          if(gcd(n, d) === 1){
+            snapCandidates.push({ ratio, num: n, den: d });
+          }
+        }
+      }
+      snapCandidates.sort((a, b) => a.ratio - b.ratio);
+    }
+
+    function gcd(a, b){
+      return b ? gcd(b, a % b) : a;
+    }
+
+    function maybeSnap(ratio){
+      let bestRatio = ratio, bestCentsDiff = Infinity;
+      for(let cand of snapCandidates){
+        let centsDiff = 1200 * Math.abs(Math.log2(ratio / cand.ratio));
+        if(centsDiff < CONFIG.effects.snapThresholdCents && centsDiff < bestCentsDiff){
+          bestCentsDiff = centsDiff;
+          bestRatio = cand.ratio;
+        }
+      }
+      return bestRatio;
+    }
+
+    function triggerGlow(deg){
+      deg.glowStart = performance.now();
+      deg.glowActive = true;
+    }
+
+    function ratioToHue(ratio){
+      return 300 * (ratio - 1);
+    }
+
+    function getGlowRadiusAlpha(deg, now){
+      if(draggingMarker === deg) return [CONFIG.effects.glowRadiusMultiplier, 1.0];
+      if(!deg.glowActive || !deg.glowStart) return [0, 0];
+      let elapsed = now - deg.glowStart;
+      if(elapsed > CONFIG.effects.glowFadeDuration){
+        deg.glowActive = false;
+        return [0, 0];
+      }
+      let frac = 1 - (elapsed / CONFIG.effects.glowFadeDuration);
+      return [CONFIG.effects.glowRadiusMultiplier * frac, frac];
+    }
+
+    function drawGlow(ctx, x, y, ratio, radius, alpha){
+      let hue = ratioToHue(ratio);
+      let gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, `hsla(${hue}, 100%, 50%, ${alpha})`);
+      gradient.addColorStop(1, "transparent");
+      ctx.save();
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Canvas Rendering Functions
+    //////////////////////////////////////////////////////////////////////////
+    function resizeCanvas(){
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+    }
+
+    function renderScale(){
+      clickableRegions = [];
+      LEFT_X = CONFIG.geometry.leftMarginRatio * canvas.width;
+      RIGHT_X = CONFIG.geometry.rightMarginRatio * canvas.width;
+      MID_Y = canvas.height / 2;
+      WIDTH = RIGHT_X - LEFT_X;
+      ctx.strokeStyle = CONFIG.colors.canvas.lineColor;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(LEFT_X, MID_Y);
+      ctx.lineTo(RIGHT_X, MID_Y);
+      ctx.stroke();
+
+      scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
+      let placedLabels = [];
+      ctx.font = "20px JetBrains Mono";
+      ctx.fillStyle = CONFIG.colors.canvas.intervalLabel;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for(let i = 0; i < scaleDegrees.length - 1; i++){
+        let leftVal = scaleDegrees[i].floatVal;
+        let rightVal = scaleDegrees[i + 1].floatVal;
+        let gap = rightVal / leftVal;
+        let mid = (leftVal + rightVal) / 2;
+        let midX = ratioToX(mid, LEFT_X, WIDTH);
+        let gapStr = fractionStringApprox(gap);
+        let lbl = positionLabel(midX, MID_Y - 50, gapStr, "interval", placedLabels);
+        drawLabel(lbl);
+      }
+
+      let now = performance.now();
+      for(let deg of scaleDegrees){
+        let x = ratioToX(deg.floatVal, LEFT_X, WIDTH);
+        let [r, a] = getGlowRadiusAlpha(deg, now);
+        if(r > 0 && a > 0){
+          drawGlow(ctx, x, MID_Y, deg.floatVal, r, a);
+        }
+        ctx.strokeStyle = CONFIG.colors.canvas.verticalLineColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, MID_Y - 70);
+        ctx.lineTo(x, MID_Y + 70);
+        ctx.stroke();
+
+        ctx.font = "20px JetBrains Mono";
+        ctx.fillStyle = CONFIG.colors.canvas.ratioLabel;
+        let ratioLbl = positionLabel(x, MID_Y - 90, deg.fractionText, "ratio", placedLabels);
+        ratioLbl.degree = deg;
+        drawLabel(ratioLbl);
+
+        ctx.font = "20px JetBrains Mono";
+        ctx.fillStyle = CONFIG.colors.canvas.freqLabel;
+        let freqVal = deg.floatVal * tonic;
+        let freqStr = freqVal.toFixed(2) + " Hz";
+        let freqLbl = positionLabel(x, MID_Y + 90, freqStr, "freq", placedLabels, true);
+        freqLbl.degree = deg;
+        drawLabel(freqLbl);
+
+        let checkBoxSize = 20;
+        let checkBoxX = x - checkBoxSize / 2;
+        let checkBoxY = ratioLbl.y - 30;
+        registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, () => {
+          deg.selected = !deg.selected;
+        });
+        ctx.save();
+        ctx.strokeStyle = CONFIG.colors.canvas.ratioLabel;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize);
+        if(deg.selected){
+          ctx.beginPath();
+          ctx.moveTo(checkBoxX, checkBoxY);
+          ctx.lineTo(checkBoxX + checkBoxSize, checkBoxY + checkBoxSize);
+          ctx.moveTo(checkBoxX + checkBoxSize, checkBoxY);
+          ctx.lineTo(checkBoxX, checkBoxY + checkBoxSize);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    function ratioToX(r, leftX, width){
+      let t = (r - 1) / (2 - 1);
+      return leftX + t * width;
+    }
+
+    function xToRatio(mouseX){
+      return 1 + ((mouseX - LEFT_X) / WIDTH);
+    }
+
+    function fractionStringApprox(x){
+      const maxDenom = 1000000;
+      const [num, den] = bestRationalApproximation(x, maxDenom);
+      const approx = num / den;
+      const error = Math.abs(x - approx);
+      let result = `${num}/${den}`;
+      if(error > 0.01) result = "~" + result;
+      return result;
+    }
+
+    function bestRationalApproximation(x, maxDenom){
+      let pPrevPrev = 0, pPrev = 1;
+      let qPrevPrev = 1, qPrev = 0;
+      let fraction = x;
+      let a = Math.floor(fraction);
+      let p = a * pPrev + pPrevPrev;
+      let q = a * qPrev + qPrevPrev;
+      while(true){
+        let remainder = fraction - a;
+        if(Math.abs(remainder) < 1e-12) break;
+        fraction = 1 / remainder;
+        a = Math.floor(fraction);
+        let pNext = a * p + pPrev;
+        let qNext = a * q + qPrev;
+        if(qNext > maxDenom) break;
+        pPrevPrev = pPrev; qPrevPrev = qPrev;
+        pPrev = p; qPrev = q;
+        p = pNext; q = qNext;
+      }
+      return [p, q];
+    }
+
+    function positionLabel(cx, cy, text, kind, placedLabels, below = false){
+      let metrics = ctx.measureText(text);
+      let textWidth = metrics.width;
+      let textHeight = (kind === "interval" ? 30 : (kind === "ratio" ? 24 : 28));
+      let labelY = cy;
+      let step = below ? 5 : -5;
+      let attempts = 40;
+      for(let i = 0; i < attempts; i++){
+        let x0 = cx - textWidth / 2;
+        let y0 = labelY - textHeight / 2;
+        let box = { x: x0, y: y0, w: textWidth, h: textHeight };
+        if(!collides(box, placedLabels)){
+          placedLabels.push(box);
+          return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
+        }
+        labelY += step;
+      }
+      let x0 = cx - textWidth / 2;
+      let y0 = cy - textHeight / 2;
+      placedLabels.push({ x: x0, y: y0, w: textWidth, h: textHeight });
+      return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
+    }
+
+    function collides(box, boxes){
+      for(let b of boxes){
+        if(!(box.x + box.w < b.x || box.x > b.x + b.w ||
+             box.y + box.h < b.y || box.y > b.y + b.h)){
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function drawLabel(label){
+      let { x, y, w, h, text, kind } = label;
+      let cx = x + w / 2, cy = y + h / 2;
+      ctx.save();
+      if(kind === "interval"){
+        ctx.font = "20px JetBrains Mono";
+        ctx.fillStyle = CONFIG.colors.canvas.intervalLabel;
+      } else if(kind === "ratio"){
+        ctx.font = "20px JetBrains Mono";
+        ctx.fillStyle = CONFIG.colors.canvas.ratioLabel;
+      } else if(kind === "freq"){
+        ctx.font = "20px JetBrains Mono";
+        ctx.fillStyle = CONFIG.colors.canvas.freqLabel;
+      }
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, cx, cy);
+      ctx.restore();
+
+      if(kind === "ratio"){
+        registerClickable(x, y, w, h, () => {
+          if(label.degree.floatVal === 1 || label.degree.floatVal === 2) return;
+          if(confirm(`Delete "${label.degree.fractionText}"?`)){
+            scaleDegrees = scaleDegrees.filter(d => d !== label.degree);
+          }
+        });
+      }
+      else if(kind === "freq"){
+        registerClickable(x, y, w, h, () => {
+          let baseDeg = label.degree;
+          triggerGlow(baseDeg);
+          let px = ratioToX(baseDeg.floatVal, LEFT_X, WIDTH);
+          createParticles(px, MID_Y, baseDeg.floatVal, 50);
+          let others = scaleDegrees.filter(d => d.selected && d !== baseDeg);
+          for(let o of others){
+            triggerGlow(o);
+            let ox = ratioToX(o.floatVal, LEFT_X, WIDTH);
+            createParticles(ox, MID_Y, o.floatVal, 50);
+          }
+          let freq = baseDeg.floatVal * tonic;
+          let allFreqs = [freq, ...others.map(o => o.floatVal * tonic)];
+          playNotesSimult(allFreqs);
+        });
+      }
+    }
+
+    function registerClickable(x, y, w, h, callback){
+      clickableRegions.push({ x, y, w, h, callback });
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Mouse and Drag Events
+    //////////////////////////////////////////////////////////////////////////
+    function onCanvasMouseDown(evt){
+      let rect = canvas.getBoundingClientRect();
+      let mx = evt.clientX - rect.left;
+      let my = evt.clientY - rect.top;
+      let marker = getMarkerAtPosition(mx, my);
+      if(marker){
+        draggingMarker = marker;
         return;
       }
-      let ok=confirm("Loading will overwrite current intervals. Continue?");
-      if(!ok)return;
-      tonic=data.tonic||261.63;
-      scaleDegrees=data.scaleDegrees.map(d=>({
-        fractionText:d.fractionText,
-        floatVal:d.floatVal,
-        selected:!!d.selected
-      }));
-      scaleDegrees.sort((a,b)=>a.floatVal-b.floatVal);
+      for(let i = clickableRegions.length - 1; i >= 0; i--){
+        let r = clickableRegions[i];
+        if(mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h){
+          r.callback(evt);
+          break;
+        }
+      }
     }
-    catch(err){
-      alert("Error parsing JSON: "+err);
-      console.error(err);
-    }
-  };
-  reader.readAsText(file);
-}
 
-function generateSclFileContent(scaleName,scaleDegrees){
-  let sorted=[...scaleDegrees].sort((a,b)=>a.floatVal-b.floatVal);
-  let relevant=sorted.filter(d=>d.floatVal<2.000001);
-  let numIntervals=relevant.length-1;
-  if(numIntervals<1)numIntervals=1;
-  let lines=[];
-  lines.push(`! ${scaleName}`);
-  lines.push(`${scaleName}`);
-  lines.push(`${numIntervals}`);
-  lines.push("!");
-  for(let i=1;i<relevant.length;i++){
-    let ratio=relevant[i].floatVal;
-    let cents=1200*Math.log2(ratio);
-    lines.push(cents.toFixed(5));
-  }
-  return lines.join("\n")+"\n";
-}
-function generateKbmFileContent(comment,scaleDegrees,refMidi,refFreq,lowestMidi,highestMidi){
-  let lines=[];
-  lines.push(`! ${comment}`);
-  lines.push("!");
-  const mapSize=(highestMidi-lowestMidi)+1;
-  lines.push(`${mapSize}`);
-  lines.push(`${lowestMidi}`);
-  lines.push(`${highestMidi}`);
-  lines.push(`${refMidi}`);
-  lines.push("0");
-  lines.push(`! Reference frequency for MIDI note ${refMidi} = ${refFreq.toFixed(3)} Hz`);
-  let sorted=[...scaleDegrees].sort((a,b)=>a.floatVal-b.floatVal);
-  const scaleCount=sorted.length;
-  for(let k=lowestMidi;k<=highestMidi;k++){
-    let cycleLen=scaleCount-1;
-    if(cycleLen<1)cycleLen=1;
-    let indexInScale=(k-lowestMidi)%cycleLen;
-    lines.push(`${indexInScale}`);
-  }
-  return lines.join("\n")+"\n";
-}
-function generateTunFileContent(scaleDegrees,refMidi,refFreq){
-  let sorted=[...scaleDegrees].sort((a,b)=>a.floatVal-b.floatVal);
-  let lines=[];
-  lines.push("! Generated by Scale WKSP");
-  lines.push("table begin");
-  for(let i=0;i<sorted.length;i++){
-    let ratio=sorted[i].floatVal;
-    let cents=1200*Math.log2(ratio);
-    lines.push(` ${i+1}) ${cents.toFixed(5)}`);
-  }
-  lines.push("table end");
-  lines.push("octave 1200.0");
-  lines.push(`middle note ${refMidi}`);
-  lines.push(`base freq ${refFreq.toFixed(5)}`);
-  return lines.join("\n")+"\n";
-}
-</script>
+    function onCanvasMouseMove(evt){
+      if(!draggingMarker) return;
+      let rect = canvas.getBoundingClientRect();
+      let mx = evt.clientX - rect.left;
+      let newRatio = xToRatio(mx);
+      newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
+      let snapped = maybeSnap(newRatio);
+      draggingMarker.floatVal = snapped;
+      draggingMarker.fractionText = fractionStringApprox(snapped);
+    }
+
+    function getMarkerAtPosition(mx, my){
+      for(let deg of scaleDegrees){
+        if(deg.floatVal === 1 || deg.floatVal === 2) continue;
+        let lineX = ratioToX(deg.floatVal, LEFT_X, WIDTH);
+        let lineTop = MID_Y - 70;
+        let lineBottom = MID_Y + 70;
+        if(my >= lineTop && my <= lineBottom && Math.abs(mx - lineX) <= CONFIG.effects.dragTolerance){
+          return deg;
+        }
+      }
+      return null;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Audio and Scale Playback Functions
+    //////////////////////////////////////////////////////////////////////////
+    function setControlsEnabled(enabled){
+      document.querySelectorAll(".controls button, .controls input, .controls select")
+        .forEach(el => { el.disabled = !enabled; });
+    }
+
+    async function playScaleOnce(){
+      let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
+      let noteDur = 0.5;
+      for(let deg of sorted){
+        triggerGlow(deg);
+        let px = ratioToX(deg.floatVal, LEFT_X, WIDTH);
+        createParticles(px, MID_Y, deg.floatVal, 20);
+        let freq = deg.floatVal * tonic;
+        await playOneNoteSequential(freq, noteDur);
+      }
+    }
+
+    function playOneNoteSequential(freq, duration){
+      return new Promise(async resolve => {
+        if(audioCtx.state === "suspended"){
+          await audioCtx.resume();
+        }
+        const now = audioCtx.currentTime;
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = CONFIG.audio.oscillatorType;
+        osc.frequency.setValueAtTime(freq, now);
+        let baseAmp = CONFIG.audio.baseAmp;
+        let freqWeight = Math.sqrt(440 / freq);
+        let finalAmp = baseAmp * freqWeight;
+        if(finalAmp > CONFIG.audio.maxAmp) finalAmp = CONFIG.audio.maxAmp;
+        gain.gain.setValueAtTime(finalAmp, now);
+        gain.gain.linearRampToValueAtTime(0, now + duration);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.onended = () => resolve();
+        osc.start(now);
+        osc.stop(now + duration);
+      });
+    }
+
+    async function playNotesSimult(freqArray){
+      if(audioCtx.state === "suspended"){
+        await audioCtx.resume();
+      }
+      let n = freqArray.length;
+      if(n < 1) return;
+      const duration = 1.0;
+      const now = audioCtx.currentTime;
+      for(let freq of freqArray){
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = CONFIG.audio.oscillatorType;
+        osc.frequency.setValueAtTime(freq, now);
+        let baseAmp = CONFIG.audio.baseAmp / n;
+        let freqWeight = Math.sqrt(440 / freq);
+        let finalAmp = baseAmp * freqWeight;
+        if(finalAmp > CONFIG.audio.maxAmp) finalAmp = CONFIG.audio.maxAmp;
+        gain.gain.setValueAtTime(finalAmp, now);
+        gain.gain.linearRampToValueAtTime(0, now + duration);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Preset, Save/Load, and File Generation Functions
+    //////////////////////////////////////////////////////////////////////////
+    function applyPresetSelection(){
+      const presetSelect = document.getElementById("presetSelect");
+      let val = presetSelect.value;
+      let [type, numStr] = val.split("-");
+      if(!type) return;
+      if(type === "custom"){
+        alert("Custom preset is not yet implemented. Coming soon!");
+        return;
+      }
+      if(!confirm("This will overwrite current intervals. Continue?")) return;
+      scaleDegrees = [
+        { fractionText: "1/1", floatVal: 1.0, selected: false },
+        { fractionText: "2/1", floatVal: 2.0, selected: false }
+      ];
+      let n = parseInt(numStr, 10);
+      if(type === "harmonic"){
+        for(let i = n + 1; i <= 2 * n; i++){
+          let valf = i / n;
+          if(Math.abs(valf - 1) < 1e-7 || Math.abs(valf - 2) < 1e-7) continue;
+          scaleDegrees.push({
+            fractionText: i + "/" + n,
+            floatVal: valf,
+            selected: false
+          });
+        }
+      } else if(type === "equal"){
+        for(let k = 1; k < n; k++){
+          let valf = Math.pow(2, k / n);
+          if(Math.abs(valf - 1) < 1e-7 || Math.abs(valf - 2) < 1e-7) continue;
+          scaleDegrees.push({
+            fractionText: `2^(${k}/${n})`,
+            floatVal: valf,
+            selected: false
+          });
+        }
+      }
+      scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
+    }
+
+    function doSave(){
+      const formatSelect = document.getElementById("formatSelect");
+      let format = formatSelect.value;
+      const refMidiNoteInput = document.getElementById("refMidiNoteInput");
+      const refFreqInput = document.getElementById("refFreqInput");
+      const lowestNoteInput = document.getElementById("lowestNoteInput");
+      const highestNoteInput = document.getElementById("highestNoteInput");
+      let refMidi = parseInt(refMidiNoteInput.value, 10) || 60;
+      let refFreq = parseFloat(refFreqInput.value) || 261.63;
+      let lowestMidi = parseInt(lowestNoteInput.value, 10) || 0;
+      let highestMidi = parseInt(highestNoteInput.value, 10) || 127;
+      let fileContent = "";
+      let fileExtension = "";
+      if(format === "json"){
+        let data = {
+          tonic: tonic,
+          scaleDegrees: scaleDegrees.map(d => ({
+            fractionText: d.fractionText,
+            floatVal: d.floatVal,
+            selected: d.selected
+          }))
+        };
+        fileContent = JSON.stringify(data, null, 2);
+        fileExtension = "json";
+        downloadFile(fileContent, fileExtension);
+      }
+      else if(format === "scl"){
+        fileContent = generateSclFileContent("My Scale", scaleDegrees);
+        fileExtension = "scl";
+        downloadFile(fileContent, fileExtension);
+      }
+      else if(format === "scl_kbm"){
+        let sclContent = generateSclFileContent("My Scale", scaleDegrees);
+        let kbmContent = generateKbmFileContent("My Scale Mapping", scaleDegrees, refMidi, refFreq, lowestMidi, highestMidi);
+        downloadFile(sclContent, "scl");
+        setTimeout(() => downloadFile(kbmContent, "kbm"), 500);
+      }
+      else if(format === "tun"){
+        fileContent = generateTunFileContent(scaleDegrees, refMidi, refFreq);
+        fileExtension = "tun";
+        downloadFile(fileContent, fileExtension);
+      }
+    }
+
+    function downloadFile(content, extension){
+      let now = new Date();
+      let YYYY = now.getFullYear();
+      let MM = String(now.getMonth() + 1).padStart(2, "0");
+      let DD = String(now.getDate()).padStart(2, "0");
+      let hh = String(now.getHours()).padStart(2, "0");
+      let mm = String(now.getMinutes()).padStart(2, "0");
+      let userCount = scaleDegrees.length - 2;
+      let fileName = `scale-${YYYY}${MM}${DD}-${hh}${mm}-${userCount}.${extension}`;
+      let blob = new Blob([content], { type: "text/plain" });
+      let url = URL.createObjectURL(blob);
+      let a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function doLoad(fileList){
+      if(!fileList || fileList.length < 1) return;
+      let file = fileList[0];
+      let reader = new FileReader();
+      reader.onload = e => {
+        try {
+          let data = JSON.parse(e.target.result);
+          if(!data.scaleDegrees || !Array.isArray(data.scaleDegrees)){
+            alert("Invalid file format: no scaleDegrees array found.");
+            return;
+          }
+          if(!confirm("Loading will overwrite current intervals. Continue?")) return;
+          tonic = data.tonic || 261.63;
+          scaleDegrees = data.scaleDegrees.map(d => ({
+            fractionText: d.fractionText,
+            floatVal: d.floatVal,
+            selected: !!d.selected
+          }));
+          scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
+        } catch(err){
+          alert("Error parsing JSON: " + err);
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function generateSclFileContent(scaleName, scaleDegrees){
+      let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
+      let relevant = sorted.filter(d => d.floatVal < 2.000001);
+      let numIntervals = relevant.length - 1;
+      if(numIntervals < 1) numIntervals = 1;
+      let lines = [];
+      lines.push(`! ${scaleName}`);
+      lines.push(`${scaleName}`);
+      lines.push(`${numIntervals}`);
+      lines.push("!");
+      for(let i = 1; i < relevant.length; i++){
+        let ratio = relevant[i].floatVal;
+        let cents = 1200 * Math.log2(ratio);
+        lines.push(cents.toFixed(5));
+      }
+      return lines.join("\n") + "\n";
+    }
+
+    function generateKbmFileContent(comment, scaleDegrees, refMidi, refFreq, lowestMidi, highestMidi){
+      let lines = [];
+      lines.push(`! ${comment}`);
+      lines.push("!");
+      const mapSize = (highestMidi - lowestMidi) + 1;
+      lines.push(`${mapSize}`);
+      lines.push(`${lowestMidi}`);
+      lines.push(`${highestMidi}`);
+      lines.push(`${refMidi}`);
+      lines.push("0");
+      lines.push(`! Reference frequency for MIDI note ${refMidi} = ${refFreq.toFixed(3)} Hz`);
+      let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
+      const scaleCount = sorted.length;
+      for(let k = lowestMidi; k <= highestMidi; k++){
+        let cycleLen = scaleCount - 1;
+        if(cycleLen < 1) cycleLen = 1;
+        let indexInScale = (k - lowestMidi) % cycleLen;
+        lines.push(`${indexInScale}`);
+      }
+      return lines.join("\n") + "\n";
+    }
+
+    function generateTunFileContent(scaleDegrees, refMidi, refFreq){
+      let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
+      let lines = [];
+      lines.push("! Generated by Scale WKSP");
+      lines.push("table begin");
+      for(let i = 0; i < sorted.length; i++){
+        let ratio = sorted[i].floatVal;
+        let cents = 1200 * Math.log2(ratio);
+        lines.push(` ${i + 1}) ${cents.toFixed(5)}`);
+      }
+      lines.push("table end");
+      lines.push("octave 1200.0");
+      lines.push(`middle note ${refMidi}`);
+      lines.push(`base freq ${refFreq.toFixed(5)}`);
+      return lines.join("\n") + "\n";
+    }
+
+    function parseFractionOrDecimal(s){
+      s = s.trim();
+      if(s.includes("^")){
+        let match = s.match(/^(.+)\^(.+)$/);
+        if(!match) return NaN;
+        let baseStr = match[1].replace(/^\(+/, "").replace(/\)+$/, "");
+        let expStr = match[2].replace(/^\(+/, "").replace(/\)+$/, "");
+        let baseVal = parseFractionOrDecimal(baseStr);
+        let expVal = parseFractionOrDecimal(expStr);
+        if(!isFinite(baseVal) || !isFinite(expVal)) return NaN;
+        return Math.pow(baseVal, expVal);
+      }
+      if(s.includes("/")){
+        let parts = s.split("/");
+        if(parts.length !== 2) return NaN;
+        let num = parseFloat(parts[0]);
+        let den = parseFloat(parts[1]);
+        if(!isFinite(num) || !isFinite(den) || den === 0) return NaN;
+        return num / den;
+      }
+      return parseFloat(s);
+    }
+  </script>
+  
 </body>
 </html>
