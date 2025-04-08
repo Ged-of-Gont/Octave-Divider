@@ -42,11 +42,11 @@
       --particle-saturation: 100%;
       --particle-lightness: 60%;
       --drag-tolerance-px: 10;
-      --default-particle-count: 25;
+      --default-particle-count: 1000;
       --particle-stdev: 6;
       --particle-velocity-scale: 0.02;
       --particle-lifetime-base: 500;
-      --particle-lifetime-random: 300;
+      --particle-lifetime-random: 800;
     }
 
     /************************************************************************
@@ -188,14 +188,6 @@
     <option value="233.08">A#3 (~233.08 Hz)</option>
     <option value="246.94">B3 (~246.94 Hz)</option>
     <option value="261.63">C4 (~261.63 Hz)</option>
-    <option value="277.18">C#4 (~277.18 Hz)</option>
-    <option value="293.66">D4 (~293.66 Hz)</option>
-    <option value="311.13">D#4 (~311.13 Hz)</option>
-    <option value="329.63">E4 (~329.63 Hz)</option>
-    <option value="349.23">F4 (~349.23 Hz)</option>
-    <option value="369.99">F#4 (~369.99 Hz)</option>
-    <option value="392.00">G4 (~392.00 Hz)</option>
-    <option value="415.30">G#4 (~415.30 Hz)</option>
     <option value="440.00">A4 (~440.00 Hz)</option>
   </select>
   <input id="tonicInput" type="number" value="130.81" step="0.01" />
@@ -295,7 +287,7 @@
   const cssVars = getComputedStyle(document.documentElement);
 
   const DRAG_TOLERANCE_PX  = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
-  const DEFAULT_PARTICLE_COUNT  = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 25;
+  const DEFAULT_PARTICLE_COUNT  = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 5000;
   const PARTICLE_STDEV          = parseFloat(cssVars.getPropertyValue("--particle-stdev")) || 6;
   const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-velocity-scale")) || 0.02;
   const PARTICLE_LIFETIME_BASE  = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 500;
@@ -432,47 +424,63 @@
   /**************************************************************************
    * 4) Particle System
    **************************************************************************/
-  function createParticlesGaussian(deg, count=DEFAULT_PARTICLE_COUNT){
-    const now = performance.now();
-    const lineX = ratioToX(deg.floatVal, LEFT_X, WIDTH);
-    const lineTop = MID_Y - 70;
-    const lineBot = MID_Y + 70;
-
-    // center around MID_Y with stdev=20
-    const stdev= 20;
-    const hue  = ratioToHue(deg.floatVal);
-
-    for(let i=0; i<count; i++){
-      let yCandidate = sampleNormal(MID_Y, stdev);
-      if(yCandidate< lineTop) yCandidate= lineTop;
-      if(yCandidate> lineBot) yCandidate= lineBot;
-
-      // random horizontal offset, e.g. ±25
-      let spawnX = lineX + (Math.random()*50 - 25);
-
-      let vx = (Math.random()*2 -1)* PARTICLE_VELOCITY_SCALE;
-      let vy = (Math.random()*2 -1)* PARTICLE_VELOCITY_SCALE;
-      let lifetime = PARTICLE_LIFETIME_BASE + Math.random()*PARTICLE_LIFETIME_RANDOM;
-
-      particles.push({
-        x: spawnX,
-        y: yCandidate,
-        vx, vy,
-        lifetime,
-        born: now,
-        color: `hsl(${hue}, ${PARTICLE_SATURATION}, ${PARTICLE_LIGHTNESS})`
-      });
-    }
+   function createParticlesGaussian(deg, count = DEFAULT_PARTICLE_COUNT, laplaceScale = 10) {
+  const now = performance.now();
+  // The x-coordinate of the vertical tone marker bar
+  const centerX = ratioToX(deg.floatVal, LEFT_X, WIDTH);
+  // We'll keep the vertical center at MID_Y
+  const centerY = MID_Y;
+  
+  // For the vertical position, continue to use a normal distribution.
+  // Adjust sigmaY (vertical spread) as needed.
+  const sigmaY = 30;
+  
+  const hue = ratioToHue(deg.floatVal);
+  
+  for (let i = 0; i < count; i++) {
+    // Instead of a normal sample for x, use the Laplace sample.
+    const offsetX = sampleLaplace(laplaceScale);
+    // This will predominantly produce small offsets but with an exponential falloff.
+    const x = centerX + offsetX;
+    
+    // Use the original normal distribution for the vertical offset.
+    const y = centerY + sampleNormal(0, sigmaY);
+    
+    const vx = (Math.random() * 2 - 1) * PARTICLE_VELOCITY_SCALE;
+    const vy = (Math.random() * 2 - 1) * PARTICLE_VELOCITY_SCALE;
+    const lifetime = PARTICLE_LIFETIME_BASE + Math.random() * PARTICLE_LIFETIME_RANDOM;
+    
+    particles.push({
+      x,
+      y,
+      vx,
+      vy,
+      lifetime,
+      born: now,
+      color: `hsl(${hue}, ${PARTICLE_SATURATION}, ${PARTICLE_LIGHTNESS})`
+    });
   }
+}
 
-  // box-muller for normal distribution
-  function sampleNormal(mean, stdev){
-    let u1= Math.random();
-    let u2= Math.random();
-    let r = Math.sqrt(-2 * Math.log(u1));
-    let theta= 2*Math.PI*u2;
-    return mean + stdev*r*Math.cos(theta);
-  }
+function sampleLaplace(scale) {
+  // Generates a Laplace-distributed random number with mean 0 and diversity "scale"
+  // The probability density is proportional to exp(-|x|/scale)
+  let u = Math.random() - 0.5;
+  return Math.sign(u) * scale * Math.log(1 - 2 * Math.abs(u));
+}
+
+
+// Helper: returns a normally-distributed random number using Box–Muller.
+function sampleNormal(mean, stdev) {
+  const u1 = Math.random();
+  const u2 = Math.random();
+  const r = Math.sqrt(-2 * Math.log(u1));
+  const theta = 2 * Math.PI * u2;
+  return mean + stdev * r * Math.cos(theta);
+}
+
+
+
 
   function updateParticles(){
     let now = performance.now();
@@ -491,7 +499,7 @@
       if(lifeFrac>1) lifeFrac=1;
 
       let alpha= 1- lifeFrac;
-      let sizeStart=2, sizeEnd=0.5;
+      let sizeStart=1, sizeEnd=0.35;
       let size= sizeStart + (sizeEnd - sizeStart)* lifeFrac;
 
       ctx.save();
@@ -693,13 +701,13 @@
         let baseDeg= label.degree;
         // trigger pulse
         baseDeg.pulse= { start: performance.now() };
-        createParticlesGaussian(baseDeg, 100);
+        createParticlesGaussian(baseDeg, DEFAULT_PARTICLE_COUNT);
 
         // also for selected degrees
         let others= scaleDegrees.filter(d=> d.selected && d!== baseDeg);
         others.forEach(o=>{
           o.pulse= { start: performance.now() };
-          createParticlesGaussian(o, 100);
+          createParticlesGaussian(o, DEFAULT_PARTICLE_COUNT);
         });
 
         // now play chord
@@ -778,7 +786,7 @@
     let noteDur= 0.5;
     for(let deg of sorted){
       deg.pulse= { start: performance.now() };
-      createParticlesGaussian(deg, 100);
+      createParticlesGaussian(deg, DEFAULT_PARTICLE_COUNT);
       let freq= deg.floatVal* tonic;
       await playOneNoteSequential(freq, noteDur);
     }
