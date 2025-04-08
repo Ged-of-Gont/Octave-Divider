@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Everything Under $12 – Final Merge</title>
+  <title>Everything Under $12 – Fuzzy Puff Particles</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;600;700&display=swap" rel="stylesheet">
 
   <style>
@@ -11,42 +11,42 @@
      ************************************************************************/
     :root {
       /* General Layout/Color */
-      --bg-color: #0b0f1a;
-      --text-color: #e0e0e0;
-      --header-bg-gradient: linear-gradient(90deg, #112, #224);
-      --header-color: #00ffe0;
+      --bg-color: rgb(25, 13, 52);
+      --text-color: #18e3ea;
+      --header-bg-color: #224;
+      --header-color: #18e3ea;
       --header-border-color: #18e3ea;
 
       /* Button + Input Styles */
       --input-bg-color: #101828;
-      --input-text-color: #ccffff;
+      --input-text-color: #18e3ea;
       --select-bg-color: #101828;
-      --select-text-color: #99ffff;
-      --button-bg: #0fd2ba;
+      --select-text-color: #18e3ea;
+      --button-bg: #18e3ea;
       --button-text: #002;
-      --button-border-color: #09aa9a;
+      --button-border-color: #18e3ea;
       --button-hover-bg: #00ffe0;
       --button-disabled-bg: #444;
       --button-disabled-text: #999;
 
       /* Canvas + Drawing Colors */
-      --canvas-gradient-start: rgb(25, 13, 52);
-      --canvas-gradient-end: rgb(49, 25, 77);
-      --canvas-line-color: #0af;
-      --canvas-vertical-line-color: #66b0ff;
-      --interval-label-color: #fffbcc;
+      --canvas-gradient-start: #224;
+      --canvas-gradient-end: #224;
+      --canvas-line-color: #4419c5;
+      --canvas-vertical-line-color: #4419c5;
+      --interval-label-color: #00ffe0;
       --ratio-label-color: #f0c;
-      --freq-label-color: #0ff;
+      --freq-label-color: #ff53e8;
 
       /* Particle Colors + Behavior */
       --particle-saturation: 100%;
       --particle-lightness: 60%;
       --drag-tolerance-px: 10;
       --default-particle-count: 25;
-      --particle-stdev: 20;
-      --particle-velocity-scale: 0.2;
-      --particle-lifetime-base: 1000;  /* in ms */
-      --particle-lifetime-random: 1000;
+      --particle-stdev: 6;
+      --particle-velocity-scale: 0.02;
+      --particle-lifetime-base: 500;
+      --particle-lifetime-random: 300;
     }
 
     /************************************************************************
@@ -296,10 +296,10 @@
 
   const DRAG_TOLERANCE_PX  = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
   const DEFAULT_PARTICLE_COUNT  = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 25;
-  const PARTICLE_STDEV          = parseFloat(cssVars.getPropertyValue("--particle-stdev")) || 20;
-  const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-velocity-scale")) || 0.2;
-  const PARTICLE_LIFETIME_BASE  = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 1000;
-  const PARTICLE_LIFETIME_RANDOM= parseFloat(cssVars.getPropertyValue("--particle-lifetime-random")) || 1000;
+  const PARTICLE_STDEV          = parseFloat(cssVars.getPropertyValue("--particle-stdev")) || 6;
+  const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-velocity-scale")) || 0.02;
+  const PARTICLE_LIFETIME_BASE  = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 500;
+  const PARTICLE_LIFETIME_RANDOM= parseFloat(cssVars.getPropertyValue("--particle-lifetime-random")) || 300;
   const PARTICLE_SATURATION = cssVars.getPropertyValue("--particle-saturation").trim() || "100%";
   const PARTICLE_LIGHTNESS  = cssVars.getPropertyValue("--particle-lightness").trim()  || "60%";
 
@@ -337,7 +337,6 @@
    **************************************************************************/
   window.addEventListener("DOMContentLoaded", init);
   function init(){
-    // Basic references
     const noteSelect = document.getElementById("noteSelect");
     const tonicInput = document.getElementById("tonicInput");
 
@@ -370,6 +369,7 @@
         alert("Ratio must be >1 and <2");
         return;
       }
+      // add the new interval
       let exist = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
       if(!exist){
         scaleDegrees.push({ fractionText: text, floatVal: r, selected: false });
@@ -378,8 +378,8 @@
     });
 
     document.getElementById("clearAllBtn").addEventListener("click", () => {
-      // Keep only 1/1 and 2/1
-      scaleDegrees = scaleDegrees.filter(d => d.floatVal === 1 || d.floatVal === 2);
+      // keep only 1/1 and 2/1
+      scaleDegrees = scaleDegrees.filter(d => d.floatVal===1 || d.floatVal===2);
     });
 
     document.getElementById("playScaleBtn").addEventListener("click", async () => {
@@ -418,67 +418,85 @@
    **************************************************************************/
   function animate(){
     requestAnimationFrame(animate);
+
     ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // 1) update & draw the fuzzy particles
     updateParticles();
     drawParticles();
+
+    // 2) render the scale lines & labels
     renderScale();
   }
 
   /**************************************************************************
    * 4) Particle System
    **************************************************************************/
-  function createParticles(x, y, ratio, count=DEFAULT_PARTICLE_COUNT){
-    let now = performance.now();
+  function createParticlesGaussian(deg, count=DEFAULT_PARTICLE_COUNT){
+    const now = performance.now();
+    const lineX = ratioToX(deg.floatVal, LEFT_X, WIDTH);
+    const lineTop = MID_Y - 70;
+    const lineBot = MID_Y + 70;
+
+    // center around MID_Y with stdev=20
+    const stdev= 20;
+    const hue  = ratioToHue(deg.floatVal);
+
     for(let i=0; i<count; i++){
-      let [dx, dy] = sample2DNormal(0, PARTICLE_STDEV);
-      let vx = PARTICLE_VELOCITY_SCALE * (Math.random()*2 - 1);
-      let vy = PARTICLE_VELOCITY_SCALE * (Math.random()*2 - 1);
-      let lifetime = PARTICLE_LIFETIME_BASE + Math.random() * PARTICLE_LIFETIME_RANDOM;
-      let hue = ratioToHue(ratio);
-      let color = `hsl(${hue}, ${PARTICLE_SATURATION}, ${PARTICLE_LIGHTNESS})`;
+      let yCandidate = sampleNormal(MID_Y, stdev);
+      if(yCandidate< lineTop) yCandidate= lineTop;
+      if(yCandidate> lineBot) yCandidate= lineBot;
+
+      // random horizontal offset, e.g. ±25
+      let spawnX = lineX + (Math.random()*50 - 25);
+
+      let vx = (Math.random()*2 -1)* PARTICLE_VELOCITY_SCALE;
+      let vy = (Math.random()*2 -1)* PARTICLE_VELOCITY_SCALE;
+      let lifetime = PARTICLE_LIFETIME_BASE + Math.random()*PARTICLE_LIFETIME_RANDOM;
+
       particles.push({
-        x: x + dx,
-        y: y + dy,
+        x: spawnX,
+        y: yCandidate,
         vx, vy,
         lifetime,
         born: now,
-        color
+        color: `hsl(${hue}, ${PARTICLE_SATURATION}, ${PARTICLE_LIGHTNESS})`
       });
     }
   }
 
-  function sample2DNormal(mean, stdDev){
-    let u1 = Math.random(), u2 = Math.random();
+  // box-muller for normal distribution
+  function sampleNormal(mean, stdev){
+    let u1= Math.random();
+    let u2= Math.random();
     let r = Math.sqrt(-2 * Math.log(u1));
-    let theta = 2 * Math.PI * u2;
-    return [
-      r * Math.cos(theta) * stdDev + mean,
-      r * Math.sin(theta) * stdDev + mean
-    ];
+    let theta= 2*Math.PI*u2;
+    return mean + stdev*r*Math.cos(theta);
   }
 
   function updateParticles(){
     let now = performance.now();
-    particles = particles.filter(p => (now - p.born) < p.lifetime);
+    particles= particles.filter(p => (now - p.born)< p.lifetime);
     for(let p of particles){
-      p.x += p.vx;
-      p.y += p.vy;
+      p.x+= p.vx; 
+      p.y+= p.vy; 
     }
   }
 
   function drawParticles(){
-    let now = performance.now();
+    let now= performance.now();
     for(let p of particles){
-      let age = now - p.born;
-      let lifeFrac = age / p.lifetime;
-      if(lifeFrac > 1) lifeFrac = 1;
+      let age= now- p.born;
+      let lifeFrac= age/p.lifetime;
+      if(lifeFrac>1) lifeFrac=1;
 
-      let alpha = 1 - lifeFrac;
-      let size  = 2 - 1.5 * lifeFrac; 
+      let alpha= 1- lifeFrac;
+      let sizeStart=2, sizeEnd=0.5;
+      let size= sizeStart + (sizeEnd - sizeStart)* lifeFrac;
 
       ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = p.color;
+      ctx.globalAlpha= alpha;
+      ctx.fillStyle= p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, size, 0, 2*Math.PI);
       ctx.fill();
@@ -490,128 +508,151 @@
    * 5) Rendering the Scale
    **************************************************************************/
   function resizeCanvas(){
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
+    canvas.width= canvas.clientWidth;
+    canvas.height= canvas.clientHeight;
   }
 
   function renderScale(){
-    clickableRegions = [];
-    LEFT_X = 0.08 * canvas.width;
-    RIGHT_X= 0.92 * canvas.width;
-    MID_Y  = canvas.height / 2;
-    WIDTH  = RIGHT_X - LEFT_X;
+    clickableRegions=[];
+    LEFT_X= 0.08* canvas.width;
+    RIGHT_X=0.92* canvas.width;
+    MID_Y=  canvas.height/2;
+    WIDTH=  RIGHT_X- LEFT_X;
 
     // main horizontal line
-    ctx.strokeStyle = cssVars.getPropertyValue("--canvas-line-color").trim() || "#0af";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle= cssVars.getPropertyValue("--canvas-line-color").trim() || "#0af";
+    ctx.lineWidth=3;
     ctx.beginPath();
     ctx.moveTo(LEFT_X, MID_Y);
     ctx.lineTo(RIGHT_X, MID_Y);
     ctx.stroke();
 
-    scaleDegrees.sort((a,b)=>a.floatVal - b.floatVal);
+    scaleDegrees.sort((a,b)=> a.floatVal- b.floatVal);
 
-    // interval labels
-    ctx.font = "20px JetBrains Mono";
-    ctx.fillStyle = cssVars.getPropertyValue("--interval-label-color").trim() || "#fffbcc";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    let placedLabels = [];
-    for(let i=0; i<scaleDegrees.length-1; i++){
-      let leftVal = scaleDegrees[i].floatVal;
+    // interval labels between consecutive degrees
+    ctx.font="20px JetBrains Mono";
+    ctx.fillStyle= cssVars.getPropertyValue("--interval-label-color").trim() || "#fffbcc";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+
+    let placedLabels=[];
+    for(let i=0; i< scaleDegrees.length-1; i++){
+      let leftVal=  scaleDegrees[i].floatVal;
       let rightVal= scaleDegrees[i+1].floatVal;
-      let gap = rightVal/leftVal;
-      let mid = (leftVal + rightVal)/2;
+      let gap= rightVal/ leftVal;
+      let mid= 0.5*(leftVal+ rightVal);
       let midX= ratioToX(mid, LEFT_X, WIDTH);
-      let gapStr = fractionStringApprox(gap);
-      let lbl = positionLabel(midX, MID_Y-50, gapStr, "interval", placedLabels);
+      let gapStr= fractionStringApprox(gap);
+      let lbl= positionLabel(midX, MID_Y-50, gapStr, "interval", placedLabels);
       drawLabel(lbl);
     }
 
-    // draw each scale degree
+    // now draw each scaleDegree's vertical line & ratio/freq label
     for(let deg of scaleDegrees){
-      let x = ratioToX(deg.floatVal, LEFT_X, WIDTH);
+      let x= ratioToX(deg.floatVal, LEFT_X, WIDTH);
 
-      // vertical line
-      ctx.strokeStyle = cssVars.getPropertyValue("--canvas-vertical-line-color").trim() || "#66b0ff";
-      ctx.lineWidth = 2;
+      // normal vertical line
+      ctx.strokeStyle= cssVars.getPropertyValue("--canvas-vertical-line-color").trim()|| "#66b0ff";
+      ctx.lineWidth= 4;
       ctx.beginPath();
-      ctx.moveTo(x, MID_Y - 70);
-      ctx.lineTo(x, MID_Y + 70);
+      ctx.moveTo(x, MID_Y-70);
+      ctx.lineTo(x, MID_Y+70);
       ctx.stroke();
 
+      // check for pulse
+      if(deg.pulse && deg.pulse.start){
+        let pulseDuration=1000; // ms
+        let elapsed= performance.now()- deg.pulse.start;
+        let alpha= 1- elapsed/ pulseDuration;
+        if(alpha>0){
+          ctx.save();
+          let hue= ratioToHue(deg.floatVal);
+          ctx.strokeStyle= `hsla(${hue},100%,60%,${alpha})`;
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(x, MID_Y-70);
+          ctx.lineTo(x, MID_Y+70);
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          deg.pulse=null;
+        }
+      }
+
       // ratio label
-      ctx.font = "20px JetBrains Mono";
-      ctx.fillStyle = cssVars.getPropertyValue("--ratio-label-color").trim() || "#f0c";
-      let ratioLbl = positionLabel(x, MID_Y - 90, deg.fractionText, "ratio", placedLabels);
-      ratioLbl.degree = deg;
+      ctx.font="20px JetBrains Mono";
+      ctx.fillStyle= cssVars.getPropertyValue("--ratio-label-color").trim() || "#f0c";
+      let ratioLbl= positionLabel(x, MID_Y-90, deg.fractionText, "ratio", placedLabels);
+      ratioLbl.degree= deg;
       drawLabel(ratioLbl);
 
       // freq label
-      ctx.font = "20px JetBrains Mono";
-      ctx.fillStyle = cssVars.getPropertyValue("--freq-label-color").trim() || "#0ff";
-      let freqVal = deg.floatVal * tonic;
-      let freqStr = freqVal.toFixed(2) + " Hz";
-      let freqLbl = positionLabel(x, MID_Y + 90, freqStr, "freq", placedLabels, true);
-      freqLbl.degree = deg;
+      ctx.font="20px JetBrains Mono";
+      ctx.fillStyle= cssVars.getPropertyValue("--freq-label-color").trim() || "#0ff";
+      let freqVal= deg.floatVal* tonic;
+      let freqStr= freqVal.toFixed(2)+ " Hz";
+      let freqLbl= positionLabel(x, MID_Y+90, freqStr, "freq", placedLabels, true);
+      freqLbl.degree= deg;
       drawLabel(freqLbl);
 
-      // selected checkbox
-      let checkBoxSize = 20;
-      let checkBoxX = x - checkBoxSize/2;
-      let checkBoxY = ratioLbl.y - 30;
-      registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, () => {
-        deg.selected = !deg.selected;
+      // selected "checkbox"
+      let checkBoxSize=20;
+      let checkBoxX= x- checkBoxSize/2;
+      let checkBoxY= ratioLbl.y- 30;
+      registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, ()=>{
+        deg.selected= !deg.selected;
       });
       ctx.save();
-      ctx.strokeStyle = cssVars.getPropertyValue("--ratio-label-color").trim() || "#f0c";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle= cssVars.getPropertyValue("--ratio-label-color").trim()|| "#f0c";
+      ctx.lineWidth= 2;
       ctx.strokeRect(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize);
       if(deg.selected){
         ctx.beginPath();
         ctx.moveTo(checkBoxX, checkBoxY);
-        ctx.lineTo(checkBoxX+checkBoxSize, checkBoxY+checkBoxSize);
-        ctx.moveTo(checkBoxX+checkBoxSize, checkBoxY);
-        ctx.lineTo(checkBoxX, checkBoxY+checkBoxSize);
+        ctx.lineTo(checkBoxX+ checkBoxSize, checkBoxY+ checkBoxSize);
+        ctx.moveTo(checkBoxX+ checkBoxSize, checkBoxY);
+        ctx.lineTo(checkBoxX, checkBoxY+ checkBoxSize);
         ctx.stroke();
       }
       ctx.restore();
     }
   }
 
+  // ratio in [1..2] => t in [0..1]
   function ratioToX(r, leftX, width){
-    let t = (r - 1)/(2 - 1);
-    return leftX + t*width;
+    let t= (r-1)/(2-1);
+    return leftX+ t* width;
   }
 
   function positionLabel(cx, cy, text, kind, placedLabels, below=false){
-    let metrics = ctx.measureText(text);
-    let textWidth  = metrics.width;
-    let textHeight = (kind==="interval"?30 : (kind==="ratio"?24 : 28));
-    let labelY = cy;
-    let step = below ? 5 : -5;
-    let attempts = 40;
-    for(let i=0; i<attempts; i++){
-      let x0 = cx - textWidth/2;
-      let y0 = labelY - textHeight/2;
-      let box = {x:x0, y:y0, w:textWidth, h:textHeight};
+    let metrics= ctx.measureText(text);
+    let textWidth= metrics.width;
+    let textHeight= (kind==="interval"?30 : (kind==="ratio"?24 : 28));
+    let labelY= cy;
+    let step= below? 5: -5;
+    let attempts=40;
+    for(let i=0; i< attempts; i++){
+      let x0= cx- textWidth/2;
+      let y0= labelY- textHeight/2;
+      let box= {x:x0, y:y0, w:textWidth, h:textHeight};
       if(!collides(box, placedLabels)){
         placedLabels.push(box);
-        return {x: x0, y: y0, w: textWidth, h: textHeight, text, kind};
+        return {x:x0, y:y0, w:textWidth, h:textHeight, text, kind};
       }
-      labelY += step;
+      labelY+= step;
     }
     // fallback
-    let x0 = cx - textWidth/2;
-    let y0 = cy - textHeight/2;
-    placedLabels.push({x:x0,y:y0,w:textWidth,h:textHeight});
-    return {x:x0,y:y0,w:textWidth,h:textHeight,text,kind};
+    let x0= cx- textWidth/2;
+    let y0= cy- textHeight/2;
+    placedLabels.push({x:x0, y:y0, w:textWidth, h:textHeight});
+    return {x:x0, y:y0, w:textWidth, h:textHeight, text, kind};
   }
 
   function collides(box, boxes){
     for(let b of boxes){
-      if(!(box.x+box.w < b.x || box.x > b.x+b.w ||
-           box.y+box.h < b.y || box.y > b.y+b.h)){
+      // aabb check
+      if(!(box.x+box.w< b.x|| box.x> b.x+ b.w||
+           box.y+box.h< b.y|| box.y> b.y+ b.h)){
         return true;
       }
     }
@@ -619,46 +660,51 @@
   }
 
   function drawLabel(label){
-    let {x,y,w,h,text,kind} = label;
-    let cx = x + w/2;
-    let cy = y + h/2;
+    let {x,y,w,h,text,kind}= label;
+    let cx= x+ w/2;
+    let cy= y+ h/2;
 
     ctx.save();
     if(kind==="interval"){
-      ctx.fillStyle = cssVars.getPropertyValue("--interval-label-color").trim() || "#fffbcc";
+      ctx.fillStyle= cssVars.getPropertyValue("--interval-label-color").trim()|| "#fffbcc";
     } else if(kind==="ratio"){
-      ctx.fillStyle = cssVars.getPropertyValue("--ratio-label-color").trim() || "#f0c";
+      ctx.fillStyle= cssVars.getPropertyValue("--ratio-label-color").trim()|| "#f0c";
     } else if(kind==="freq"){
-      ctx.fillStyle = cssVars.getPropertyValue("--freq-label-color").trim() || "#0ff";
+      ctx.fillStyle= cssVars.getPropertyValue("--freq-label-color").trim()|| "#0ff";
     }
-    ctx.font = "20px JetBrains Mono";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    ctx.font= "20px JetBrains Mono";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
     ctx.fillText(text, cx, cy);
     ctx.restore();
 
     // ratio => click to delete
     if(kind==="ratio"){
-      registerClickable(x,y,w,h,()=>{
-        if(label.degree.floatVal===1 || label.degree.floatVal===2) return;
+      registerClickable(x,y,w,h, ()=>{
+        if(label.degree.floatVal===1|| label.degree.floatVal===2) return;
         if(confirm(`Delete "${label.degree.fractionText}"?`)){
-          scaleDegrees = scaleDegrees.filter(d=>d!==label.degree);
+          scaleDegrees= scaleDegrees.filter(d=> d!== label.degree);
         }
       });
     }
-    // freq => click for chord
+    // freq => chord
     else if(kind==="freq"){
-      registerClickable(x,y,w,h,()=>{
-        let baseDeg = label.degree;
-        let px = ratioToX(baseDeg.floatVal, LEFT_X, WIDTH);
-        createParticles(px, MID_Y, baseDeg.floatVal, 40);
-        let others = scaleDegrees.filter(d=>d.selected && d!==baseDeg);
-        for(let o of others){
-          let ox = ratioToX(o.floatVal, LEFT_X, WIDTH);
-          createParticles(ox, MID_Y, o.floatVal, 40);
-        }
-        let freq = baseDeg.floatVal * tonic;
-        let allFreqs = [freq, ...others.map(o=>o.floatVal*tonic)];
+      registerClickable(x,y,w,h, ()=>{
+        let baseDeg= label.degree;
+        // trigger pulse
+        baseDeg.pulse= { start: performance.now() };
+        createParticlesGaussian(baseDeg, 100);
+
+        // also for selected degrees
+        let others= scaleDegrees.filter(d=> d.selected && d!== baseDeg);
+        others.forEach(o=>{
+          o.pulse= { start: performance.now() };
+          createParticlesGaussian(o, 100);
+        });
+
+        // now play chord
+        let freq= baseDeg.floatVal* tonic;
+        let allFreqs= [freq, ...others.map(o=> o.floatVal* tonic)];
         playNotesSimult(allFreqs);
       });
     }
@@ -668,19 +714,19 @@
    * 6) Mouse / Drag
    **************************************************************************/
   function onCanvasMouseDown(evt){
-    let rect = canvas.getBoundingClientRect();
-    let mx = evt.clientX - rect.left;
-    let my = evt.clientY - rect.top;
+    let rect= canvas.getBoundingClientRect();
+    let mx= evt.clientX- rect.left;
+    let my= evt.clientY- rect.top;
 
-    let marker = getMarkerAtPosition(mx, my);
+    let marker= getMarkerAtPosition(mx, my);
     if(marker){
-      draggingMarker = marker;
-      return;  // <--- ensure we do not do label checks if on marker
+      draggingMarker= marker;
+      return;
     }
-    // otherwise check labels
-    for(let i=clickableRegions.length-1; i>=0; i--){
-      let r = clickableRegions[i];
-      if(mx>=r.x && mx<=r.x+r.w && my>=r.y && my<=r.y+r.h){
+    // otherwise check label clicks
+    for(let i= clickableRegions.length-1; i>=0; i--){
+      let r= clickableRegions[i];
+      if(mx>=r.x && mx<=r.x+ r.w && my>=r.y && my<= r.y+ r.h){
         r.callback(evt);
         break;
       }
@@ -688,43 +734,39 @@
   }
 
   function onCanvasMouseMove(evt){
-    if(!draggingMarker) return;
-    let rect = canvas.getBoundingClientRect();
-    let mx = evt.clientX - rect.left;
+    if(! draggingMarker) return;
+    let rect= canvas.getBoundingClientRect();
+    let mx= evt.clientX- rect.left;
 
-    // map mouse X -> ratio in [1.0001..1.9999]
-    let newRatio = xToRatio(mx, LEFT_X, WIDTH);
-    newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
-    let snapped = maybeSnap(newRatio);
-    draggingMarker.floatVal = snapped;
-    draggingMarker.fractionText = fractionStringApprox(snapped);
+    let newRatio= xToRatio(mx, LEFT_X, WIDTH);
+    newRatio= Math.max(1.0001, Math.min(newRatio,1.9999));
+    let snapped= maybeSnap(newRatio);
 
-    // spawn a few particles
-    let xPos = ratioToX(snapped, LEFT_X, WIDTH);
-    createParticles(xPos, MID_Y, snapped, 5);
+    draggingMarker.floatVal= snapped;
+    draggingMarker.fractionText= fractionStringApprox(snapped);
+
+    // small puffs while dragging
+    createParticlesGaussian(draggingMarker, 5);
   }
 
   function getMarkerAtPosition(mx, my){
-    // skip 1/1 + 2/1
     for(let deg of scaleDegrees){
-      if(deg.floatVal===1 || deg.floatVal===2) continue;
-      let lineX = ratioToX(deg.floatVal, LEFT_X, WIDTH);
-
-      let lineTop = MID_Y - 70;
-      let lineBottom = MID_Y + 70;
-      if(my>=lineTop && my<=lineBottom && Math.abs(mx-lineX)<=DRAG_TOLERANCE_PX){
+      if(deg.floatVal===1|| deg.floatVal===2) continue; // skip 1/1 & 2/1 from dragging
+      let lineX= ratioToX(deg.floatVal, LEFT_X, WIDTH);
+      let top= MID_Y-70, bot= MID_Y+70;
+      if(my>= top && my<= bot && Math.abs(mx- lineX)<= DRAG_TOLERANCE_PX){
         return deg;
       }
     }
     return null;
   }
 
-  function xToRatio(mouseX, leftX, width){
-    let t = (mouseX - leftX)/width;
-    return 1 + t*(2 - 1);
+  function xToRatio(mx, leftX, width){
+    let t= (mx- leftX)/ width;
+    return 1+ t*(2-1); // map 0..1 => ratio in [1..2]
   }
 
-  function registerClickable(x,y,w,h,callback){
+  function registerClickable(x,y,w,h, callback){
     clickableRegions.push({x,y,w,h,callback});
   }
 
@@ -732,12 +774,12 @@
    * 7) Audio / Playback
    **************************************************************************/
   async function playScaleOnce(){
-    let sorted = [...scaleDegrees].sort((a,b)=>a.floatVal - b.floatVal);
-    let noteDur = 0.5;
+    let sorted= [...scaleDegrees].sort((a,b)=> a.floatVal- b.floatVal);
+    let noteDur= 0.5;
     for(let deg of sorted){
-      let px = ratioToX(deg.floatVal, LEFT_X, WIDTH);
-      createParticles(px, MID_Y, deg.floatVal, 20);
-      let freq = deg.floatVal * tonic;
+      deg.pulse= { start: performance.now() };
+      createParticlesGaussian(deg, 100);
+      let freq= deg.floatVal* tonic;
       await playOneNoteSequential(freq, noteDur);
     }
   }
@@ -747,25 +789,25 @@
       if(audioCtx.state==="suspended"){
         await audioCtx.resume();
       }
-      const now = audioCtx.currentTime;
-      let osc = audioCtx.createOscillator();
+      const now= audioCtx.currentTime;
+      let osc= audioCtx.createOscillator();
       let gain= audioCtx.createGain();
 
-      osc.type = "triangle";
+      osc.type= "triangle";
       osc.frequency.setValueAtTime(freq, now);
 
-      let baseAmp = 0.2;
-      let freqWeight = Math.sqrt(440/freq);
-      let finalAmp = baseAmp*freqWeight;
+      let baseAmp= 0.2;
+      let freqWeight= Math.sqrt(440/freq);
+      let finalAmp= baseAmp* freqWeight;
       if(finalAmp>0.8) finalAmp=0.8;
 
       gain.gain.setValueAtTime(finalAmp, now);
-      gain.gain.linearRampToValueAtTime(0, now+duration);
+      gain.gain.linearRampToValueAtTime(0, now+ duration);
 
       osc.connect(gain).connect(audioCtx.destination);
-      osc.onended=()=>resolve();
+      osc.onended= ()=> resolve();
       osc.start(now);
-      osc.stop(now+duration);
+      osc.stop(now+ duration);
     });
   }
 
@@ -773,28 +815,29 @@
     if(audioCtx.state==="suspended"){
       await audioCtx.resume();
     }
-    let n = freqArray.length;
+    const now= audioCtx.currentTime;
+    const duration=1.0;
+    let n= freqArray.length;
     if(n<1) return;
-    const now = audioCtx.currentTime;
-    const duration = 1.0;
+
     for(let freq of freqArray){
-      let osc = audioCtx.createOscillator();
+      let osc= audioCtx.createOscillator();
       let gain= audioCtx.createGain();
 
-      osc.type = "triangle";
+      osc.type="triangle";
       osc.frequency.setValueAtTime(freq, now);
 
-      let baseAmp = 0.2 / n;
-      let freqWeight = Math.sqrt(440/freq);
-      let finalAmp = baseAmp * freqWeight;
+      let baseAmp= 0.2/ n;
+      let freqWeight= Math.sqrt(440/freq);
+      let finalAmp= baseAmp* freqWeight;
       if(finalAmp>0.8) finalAmp=0.8;
 
       gain.gain.setValueAtTime(finalAmp, now);
-      gain.gain.linearRampToValueAtTime(0, now+duration);
+      gain.gain.linearRampToValueAtTime(0, now+ duration);
 
       osc.connect(gain).connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now+duration);
+      osc.stop(now+ duration);
     }
   }
 
@@ -803,30 +846,30 @@
    **************************************************************************/
   function initSnapCandidates(){
     snapCandidates=[];
-    for(let d=1; d<=MAX_DEN; d++){
-      for(let n=1; n<2*d; n++){
-        let ratio = n/d;
-        if(ratio<=1 || ratio>=2) continue;
+    for(let d=1; d<= MAX_DEN; d++){
+      for(let n=1; n< 2*d; n++){
+        let ratio= n/d;
+        if(ratio<=1|| ratio>=2) continue;
         if(gcd(n,d)===1){
-          snapCandidates.push({ ratio, num:n, den:d });
+          snapCandidates.push({ ratio, num:n, den:d});
         }
       }
     }
-    snapCandidates.sort((a,b)=>a.ratio - b.ratio);
+    snapCandidates.sort((a,b)=> a.ratio- b.ratio);
   }
 
   function gcd(a,b){
-    return b ? gcd(b,a%b) : a;
+    return b? gcd(b, a%b): a;
   }
 
   function maybeSnap(ratio){
-    let best = ratio;
-    let bestDiff = Infinity;
+    let best= ratio;
+    let bestDiff= Infinity;
     for(let cand of snapCandidates){
-      let centsDiff = 1200*Math.abs(Math.log2(ratio/cand.ratio));
-      if(centsDiff<SNAP_THRESHOLD_CENTS && centsDiff<bestDiff){
-        best = cand.ratio;
-        bestDiff = centsDiff;
+      let centsDiff= 1200*Math.abs(Math.log2(ratio/cand.ratio));
+      if(centsDiff< SNAP_THRESHOLD_CENTS && centsDiff< bestDiff){
+        best= cand.ratio;
+        bestDiff= centsDiff;
       }
     }
     return best;
@@ -836,93 +879,93 @@
    * 9) Presets
    **************************************************************************/
   function applyPresetSelection(){
-    let val = document.getElementById("presetSelect").value;
-    let [type, numStr] = val.split("-");
+    let val= document.getElementById("presetSelect").value;
+    let [type, numStr]= val.split("-");
     if(!type) return;
     if(type==="custom"){
       alert("Custom preset is not yet implemented. Coming soon!");
       return;
     }
     if(!confirm("This will overwrite current intervals. Continue?")) return;
-    scaleDegrees = [
-      { fractionText:"1/1", floatVal:1.0, selected:false },
-      { fractionText:"2/1", floatVal:2.0, selected:false }
+    scaleDegrees= [
+      { fractionText:"1/1", floatVal:1.0, selected:false},
+      { fractionText:"2/1", floatVal:2.0, selected:false}
     ];
-    let n = parseInt(numStr,10);
+    let n= parseInt(numStr,10);
+
     if(type==="harmonic"){
-      for(let i=n+1; i<=2*n; i++){
-        let valf = i/n;
-        if(Math.abs(valf-1)<1e-7 || Math.abs(valf-2)<1e-7) continue;
-        scaleDegrees.push({ fractionText: i+"/"+n, floatVal: valf, selected:false });
+      for(let i=n+1; i<= 2*n; i++){
+        let valf= i/n;
+        if(Math.abs(valf-1)<1e-7|| Math.abs(valf-2)<1e-7) continue;
+        scaleDegrees.push({ fractionText: i+"/"+ n, floatVal: valf, selected:false});
       }
-    }
-    else if(type==="equal"){
+    } else if(type==="equal"){
       for(let k=1; k<n; k++){
-        let valf = Math.pow(2, k/n);
-        if(Math.abs(valf-1)<1e-7 || Math.abs(valf-2)<1e-7) continue;
-        scaleDegrees.push({ fractionText:`2^(${k}/${n})`, floatVal:valf, selected:false });
+        let valf= Math.pow(2, k/n);
+        if(Math.abs(valf-1)<1e-7|| Math.abs(valf-2)<1e-7) continue;
+        scaleDegrees.push({ fractionText:`2^(${k}/${n})`, floatVal: valf, selected:false});
       }
     }
-    scaleDegrees.sort((a,b)=>a.floatVal - b.floatVal);
+    scaleDegrees.sort((a,b)=> a.floatVal- b.floatVal);
   }
 
   /**************************************************************************
    * 10) Save/Load
    **************************************************************************/
   function doSave(){
-    const formatSelect = document.getElementById("formatSelect");
-    let format = formatSelect.value;
-    const refMidi = parseInt(document.getElementById("refMidiNoteInput").value,10) || 60;
-    const refFreq = parseFloat(document.getElementById("refFreqInput").value) || 261.63;
-    const lowestMidi = parseInt(document.getElementById("lowestNoteInput").value,10)||0;
+    const formatSelect= document.getElementById("formatSelect");
+    let format= formatSelect.value;
+    const refMidi= parseInt(document.getElementById("refMidiNoteInput").value,10)|| 60;
+    const refFreq= parseFloat(document.getElementById("refFreqInput").value)|| 261.63;
+    const lowestMidi= parseInt(document.getElementById("lowestNoteInput").value,10)||0;
     const highestMidi= parseInt(document.getElementById("highestNoteInput").value,10)||127;
 
     let fileContent="", fileExtension="";
     if(format==="json"){
-      let data = {
+      let data={
         tonic: tonic,
-        scaleDegrees: scaleDegrees.map(d => ({
+        scaleDegrees: scaleDegrees.map(d=>({
           fractionText: d.fractionText,
           floatVal: d.floatVal,
           selected: d.selected
         }))
       };
-      fileContent = JSON.stringify(data,null,2);
+      fileContent= JSON.stringify(data,null,2);
       fileExtension="json";
-      downloadFile(fileContent, fileExtension);
+      downloadFile(fileContent,fileExtension);
     }
     else if(format==="scl"){
-      fileContent = generateSclFileContent("My Scale", scaleDegrees);
+      fileContent= generateSclFileContent("My Scale", scaleDegrees);
       fileExtension="scl";
-      downloadFile(fileContent, fileExtension);
+      downloadFile(fileContent,fileExtension);
     }
     else if(format==="scl_kbm"){
-      let sclContent = generateSclFileContent("My Scale", scaleDegrees);
-      let kbmContent = generateKbmFileContent("My Scale Mapping", scaleDegrees, refMidi, refFreq, lowestMidi, highestMidi);
+      let sclContent= generateSclFileContent("My Scale", scaleDegrees);
+      let kbmContent= generateKbmFileContent("My Scale Mapping", scaleDegrees, refMidi, refFreq, lowestMidi, highestMidi);
       downloadFile(sclContent,"scl");
-      setTimeout(()=>downloadFile(kbmContent,"kbm"), 500);
+      setTimeout(()=> downloadFile(kbmContent,"kbm"), 500);
     }
     else if(format==="tun"){
-      fileContent = generateTunFileContent(scaleDegrees, refMidi, refFreq);
+      fileContent= generateTunFileContent(scaleDegrees, refMidi, refFreq);
       fileExtension="tun";
-      downloadFile(fileContent, fileExtension);
+      downloadFile(fileContent,fileExtension);
     }
   }
 
-  function downloadFile(content,extension){
-    let now = new Date();
-    let YYYY = now.getFullYear();
-    let MM   = String(now.getMonth()+1).padStart(2,"0");
-    let DD   = String(now.getDate()).padStart(2,"0");
-    let hh   = String(now.getHours()).padStart(2,"0");
-    let mm   = String(now.getMinutes()).padStart(2,"0");
-    let userCount = scaleDegrees.length - 2;
-    let fileName = `scale-${YYYY}${MM}${DD}-${hh}${mm}-${userCount}.${extension}`;
-    let blob = new Blob([content], {type:"text/plain"});
-    let url  = URL.createObjectURL(blob);
-    let a    = document.createElement("a");
-    a.href   = url;
-    a.download = fileName;
+  function downloadFile(content, extension){
+    let now= new Date();
+    let YYYY= now.getFullYear();
+    let MM= String(now.getMonth()+1).padStart(2,"0");
+    let DD= String(now.getDate()).padStart(2,"0");
+    let hh= String(now.getHours()).padStart(2,"0");
+    let mm= String(now.getMinutes()).padStart(2,"0");
+    let userCount= scaleDegrees.length-2;
+    let fileName= `scale-${YYYY}${MM}${DD}-${hh}${mm}-${userCount}.${extension}`;
+    let blob= new Blob([content], {type:"text/plain"});
+    let url= URL.createObjectURL(blob);
+    let a= document.createElement("a");
+    a.href= url;
+    a.download= fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -930,24 +973,24 @@
   }
 
   function doLoad(fileList){
-    if(!fileList || fileList.length<1) return;
-    let file = fileList[0];
-    let reader = new FileReader();
-    reader.onload = e =>{
+    if(!fileList|| fileList.length<1) return;
+    let file= fileList[0];
+    let reader= new FileReader();
+    reader.onload= e=>{
       try{
-        let data = JSON.parse(e.target.result);
-        if(!data.scaleDegrees || !Array.isArray(data.scaleDegrees)){
+        let data= JSON.parse(e.target.result);
+        if(!data.scaleDegrees|| !Array.isArray(data.scaleDegrees)){
           alert("Invalid file format: no scaleDegrees array found.");
           return;
         }
         if(!confirm("Loading will overwrite current intervals. Continue?")) return;
-        tonic = data.tonic || 261.63;
-        scaleDegrees = data.scaleDegrees.map(d=>({
+        tonic= data.tonic|| 261.63;
+        scaleDegrees= data.scaleDegrees.map(d=>({
           fractionText: d.fractionText,
           floatVal: d.floatVal,
           selected: !!d.selected
         }));
-        scaleDegrees.sort((a,b)=>a.floatVal - b.floatVal);
+        scaleDegrees.sort((a,b)=> a.floatVal- b.floatVal);
       } catch(err){
         alert("Error parsing JSON: "+err);
         console.error(err);
@@ -957,18 +1000,18 @@
   }
 
   function generateSclFileContent(scaleName, scaleDegrees){
-    let sorted = [...scaleDegrees].sort((a,b)=>a.floatVal - b.floatVal);
-    let relevant = sorted.filter(d=>d.floatVal<2.000001);
-    let numIntervals = relevant.length -1;
+    let sorted= [...scaleDegrees].sort((a,b)=> a.floatVal- b.floatVal);
+    let relevant= sorted.filter(d=> d.floatVal< 2.000001);
+    let numIntervals= relevant.length-1;
     if(numIntervals<1) numIntervals=1;
     let lines=[];
     lines.push(`! ${scaleName}`);
     lines.push(`${scaleName}`);
     lines.push(`${numIntervals}`);
     lines.push("!");
-    for(let i=1; i<relevant.length; i++){
-      let ratio = relevant[i].floatVal;
-      let cents = 1200*Math.log2(ratio);
+    for(let i=1; i< relevant.length; i++){
+      let ratio= relevant[i].floatVal;
+      let cents= 1200* Math.log2(ratio);
       lines.push(cents.toFixed(5));
     }
     return lines.join("\n")+"\n";
@@ -978,32 +1021,32 @@
     let lines=[];
     lines.push(`! ${comment}`);
     lines.push("!");
-    const mapSize = (highestMidi - lowestMidi)+1;
+    const mapSize= (highestMidi- lowestMidi)+1;
     lines.push(`${mapSize}`);
     lines.push(`${lowestMidi}`);
     lines.push(`${highestMidi}`);
     lines.push(`${refMidi}`);
     lines.push("0");
     lines.push(`! Reference frequency for MIDI note ${refMidi} = ${refFreq.toFixed(3)} Hz`);
-    let sorted = [...scaleDegrees].sort((a,b)=>a.floatVal - b.floatVal);
-    const scaleCount = sorted.length;
-    for(let k=lowestMidi; k<=highestMidi; k++){
-      let cycleLen = scaleCount-1;
+    let sorted= [...scaleDegrees].sort((a,b)=> a.floatVal- b.floatVal);
+    const scaleCount= sorted.length;
+    for(let k= lowestMidi; k<= highestMidi; k++){
+      let cycleLen= scaleCount-1;
       if(cycleLen<1) cycleLen=1;
-      let indexInScale = (k - lowestMidi) % cycleLen;
+      let indexInScale= (k- lowestMidi)% cycleLen;
       lines.push(`${indexInScale}`);
     }
     return lines.join("\n")+"\n";
   }
 
   function generateTunFileContent(scaleDegrees, refMidi, refFreq){
-    let sorted=[...scaleDegrees].sort((a,b)=>a.floatVal - b.floatVal);
+    let sorted= [...scaleDegrees].sort((a,b)=> a.floatVal- b.floatVal);
     let lines=[];
     lines.push("! Generated by Scale WKSP");
     lines.push("table begin");
-    for(let i=0; i<sorted.length; i++){
-      let ratio=sorted[i].floatVal;
-      let cents=1200*Math.log2(ratio);
+    for(let i=0; i< sorted.length; i++){
+      let ratio= sorted[i].floatVal;
+      let cents= 1200* Math.log2(ratio);
       lines.push(` ${i+1}) ${cents.toFixed(5)}`);
     }
     lines.push("table end");
@@ -1018,68 +1061,72 @@
    **************************************************************************/
   function setControlsEnabled(enabled){
     document.querySelectorAll(".controls button, .controls input, .controls select")
-      .forEach(el => { el.disabled = !enabled; });
+      .forEach(el=> { el.disabled= !enabled; });
   }
 
   function fractionStringApprox(x){
-    const maxDenom = 1000000;
-    const [num, den] = bestRationalApproximation(x, maxDenom);
-    const approx = num/den;
-    const error = Math.abs(x - approx);
-    let result = `${num}/${den}`;
-    if(error>0.01) result = "~" + result;
-    return result;
+    let [num,den]= bestRationalApproximation(x, 100000);
+    let approx= num/den;
+    let err= Math.abs(x- approx);
+    let label= `${num}/${den}`;
+    if(err>0.01) label="~"+ label;
+    return label;
   }
 
   function bestRationalApproximation(x, maxDen){
     let pPrevPrev=0, pPrev=1;
     let qPrevPrev=1, qPrev=0;
-    let fraction=x;
-    let a=Math.floor(fraction);
-    let p=a*pPrev + pPrevPrev;
-    let q=a*qPrev + qPrevPrev;
+    let fraction= x;
+    let a= Math.floor(fraction);
+    let p= a*pPrev+ pPrevPrev;
+    let q= a*qPrev+ qPrevPrev;
     while(true){
-      let remainder = fraction - a;
+      let remainder= fraction- a;
       if(Math.abs(remainder)<1e-12) break;
-      fraction=1/remainder;
-      a=Math.floor(fraction);
-      let pNext=a*p + pPrev;
-      let qNext=a*q + qPrev;
-      if(qNext>maxDen) break;
-      pPrevPrev=pPrev; qPrevPrev=qPrev;
-      pPrev=p; qPrev=q;
-      p=pNext; q=qNext;
+      fraction=1/ remainder;
+      a= Math.floor(fraction);
+      let pNext= a*p+ pPrev;
+      let qNext= a*q+ qPrev;
+      if(qNext> maxDen) break;
+      pPrevPrev= pPrev;
+      qPrevPrev= qPrev;
+      pPrev= p;
+      qPrev= q;
+      p= pNext;
+      q= qNext;
     }
     return [p,q];
   }
 
   function parseFractionOrDecimal(s){
-    s = s.trim();
+    s= s.trim();
     if(!s) return NaN;
+    // handle exponent notation e.g. 2^(3/4)
     if(s.includes("^")){
-      let match = s.match(/^(.+)\^(.+)$/);
-      if(!match) return NaN;
-      let baseStr = match[1].replace(/^\(+/,"").replace(/\)+$/,"");
-      let expStr  = match[2].replace(/^\(+/,"").replace(/\)+$/,"");
-      let baseVal = parseFractionOrDecimal(baseStr);
-      let expVal  = parseFractionOrDecimal(expStr);
-      if(!isFinite(baseVal) || !isFinite(expVal)) return NaN;
+      let match= s.match(/^(.+)\^(.+)$/);
+      if(! match) return NaN;
+      let baseStr= match[1].replace(/^\(+/,"").replace(/\)+$/,"");
+      let expStr= match[2].replace(/^\(+/,"").replace(/\)+$/,"");
+      let baseVal= parseFractionOrDecimal(baseStr);
+      let expVal= parseFractionOrDecimal(expStr);
+      if(!isFinite(baseVal)|| ! isFinite(expVal)) return NaN;
       return Math.pow(baseVal, expVal);
     }
     if(s.includes("/")){
-      let parts = s.split("/");
+      let parts= s.split("/");
       if(parts.length!==2) return NaN;
-      let num = parseFloat(parts[0]);
-      let den = parseFloat(parts[1]);
-      if(!isFinite(num)||!isFinite(den)||den===0) return NaN;
-      return num/den;
+      let num= parseFloat(parts[0]);
+      let den= parseFloat(parts[1]);
+      if(!isFinite(num)|| !isFinite(den)|| den===0) return NaN;
+      return num/ den;
     }
     return parseFloat(s);
   }
 
   function ratioToHue(ratio){
-    let t = ratio - 1;
-    return 300 * t;
+    // ratio in [1..2] => hue in [0..300]
+    let t= ratio-1;
+    return 300* t;
   }
 </script>
 </body>
