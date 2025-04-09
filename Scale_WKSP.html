@@ -11,30 +11,29 @@
      ************************************************************************/
     :root {
       /* General Layout/Color */
-      --bg-color: rgb(25, 13, 52);
-      --text-color: #18e3ea;
-      --header-bg-color: #224;
-      --header-color: #18e3ea;
-      --header-border-color: #18e3ea;
+      --bg-color: rgb(15, 7, 34);
+      --text-color: #a4f1e8;
+      --header-bg-color: rgb(15, 7, 34);
+      --header-color: #a4f1e8;
 
       /* Button + Input Styles */
       --input-bg-color: #101828;
-      --input-text-color: #18e3ea;
+      --input-text-color: #a4f1e8;
       --select-bg-color: #101828;
-      --select-text-color: #18e3ea;
-      --button-bg: #18e3ea;
+      --select-text-color: #a4f1e8;
+      --button-bg: #a4f1e8;
       --button-text: #002;
-      --button-border-color: #18e3ea;
-      --button-hover-bg: #00ffe0;
+      --button-border-color: #a4f1e8;
+      --button-hover-bg: #a4f1e8;
       --button-disabled-bg: #444;
       --button-disabled-text: #999;
 
       /* Canvas + Drawing Colors */
-      --canvas-gradient-start: #224;
-      --canvas-gradient-end: #224;
-      --canvas-line-color: #4419c5;
-      --canvas-vertical-line-color: #4419c5;
-      --interval-label-color: #00ffe0;
+      --canvas-gradient-start: rgb(15, 7, 34);
+      --canvas-gradient-end: rgb(15, 7, 34);
+      --canvas-line-color: #35313f;
+      --canvas-vertical-line-color: 35313f;
+      --interval-label-color: #a4f1e8;
       --ratio-label-color: #f0c;
       --freq-label-color: #ff53e8;
 
@@ -42,13 +41,13 @@
       --particle-saturation: 100%;
       --particle-lightness: 60%;
       --drag-tolerance-px: 10;
-      --default-particle-count: 1000;
+      --default-particle-count: 500;
       --particle-stdev: 6;
       --particle-velocity-scale: 0.02;
-      --particle-lifetime-base: 500;
-      --particle-lifetime-random: 800;
+      --particle-lifetime-base: 1000;
+      --particle-lifetime-random: 100;
     }
-
+    
     /************************************************************************
      * 2) Base Page / Layout
      ************************************************************************/
@@ -63,11 +62,9 @@
     }
     header {
       padding: 1rem;
-      background: var(--header-bg-gradient);
+      background: var(--bg-color);
       color: var(--header-color);
       font-weight: 700;
-      text-shadow: 1px 1px #000;
-      border-bottom: 2px solid var(--header-border-color);
       font-size: 2rem;
     }
     .controls {
@@ -80,6 +77,10 @@
     .spacer {
       width: 100px;
     }
+    .controls button:hover {
+      filter: blur(1px);
+}
+
 
     /************************************************************************
      * 3) Form Inputs, Buttons
@@ -287,11 +288,11 @@
   const cssVars = getComputedStyle(document.documentElement);
 
   const DRAG_TOLERANCE_PX  = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
-  const DEFAULT_PARTICLE_COUNT  = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 5000;
+  const DEFAULT_PARTICLE_COUNT  = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 100;
   const PARTICLE_STDEV          = parseFloat(cssVars.getPropertyValue("--particle-stdev")) || 6;
   const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-velocity-scale")) || 0.02;
-  const PARTICLE_LIFETIME_BASE  = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 500;
-  const PARTICLE_LIFETIME_RANDOM= parseFloat(cssVars.getPropertyValue("--particle-lifetime-random")) || 300;
+  const PARTICLE_LIFETIME_BASE  = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 1000;
+  const PARTICLE_LIFETIME_RANDOM= parseFloat(cssVars.getPropertyValue("--particle-lifetime-random")) || 500;
   const PARTICLE_SATURATION = cssVars.getPropertyValue("--particle-saturation").trim() || "100%";
   const PARTICLE_LIGHTNESS  = cssVars.getPropertyValue("--particle-lightness").trim()  || "60%";
 
@@ -490,27 +491,35 @@ function sampleNormal(mean, stdev) {
       p.y+= p.vy; 
     }
   }
-
   function drawParticles(){
-    let now= performance.now();
-    for(let p of particles){
-      let age= now- p.born;
-      let lifeFrac= age/p.lifetime;
-      if(lifeFrac>1) lifeFrac=1;
+  ctx.globalCompositeOperation = 'lighter';
+  let now = performance.now();
+  for(let p of particles){
+    let age = now - p.born;
+    let lifeFrac = age / p.lifetime;
+    if(lifeFrac > 1) lifeFrac = 1;
+    let alpha = 1 - lifeFrac;
+    let sizeStart = 1, sizeEnd = 0.8;
+    let size = sizeStart + (sizeEnd - sizeStart) * lifeFrac;
 
-      let alpha= 1- lifeFrac;
-      let sizeStart=1, sizeEnd=0.35;
-      let size= sizeStart + (sizeEnd - sizeStart)* lifeFrac;
+    ctx.save();
+    let glowFactor = 2.0;
+let gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * glowFactor);
+gradient.addColorStop(0, p.color.replace(')', `, ${alpha})`).replace('hsl', 'hsla'));
+gradient.addColorStop(0.5, p.color.replace(')', `, ${alpha * 0.5})`).replace('hsl', 'hsla'));
+gradient.addColorStop(1, p.color.replace(')', `, 0)`).replace('hsl', 'hsla'));
 
-      ctx.save();
-      ctx.globalAlpha= alpha;
-      ctx.fillStyle= p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, size, 0, 2*Math.PI);
-      ctx.fill();
-      ctx.restore();
-    }
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
   }
+   // Reset composite mode to default
+   ctx.globalCompositeOperation = 'source-over';
+}
+
 
   /**************************************************************************
    * 5) Rendering the Scale
@@ -521,111 +530,125 @@ function sampleNormal(mean, stdev) {
   }
 
   function renderScale(){
-    clickableRegions=[];
-    LEFT_X= 0.08* canvas.width;
-    RIGHT_X=0.92* canvas.width;
-    MID_Y=  canvas.height/2;
-    WIDTH=  RIGHT_X- LEFT_X;
-
-    // main horizontal line
-    ctx.strokeStyle= cssVars.getPropertyValue("--canvas-line-color").trim() || "#0af";
-    ctx.lineWidth=3;
-    ctx.beginPath();
-    ctx.moveTo(LEFT_X, MID_Y);
-    ctx.lineTo(RIGHT_X, MID_Y);
-    ctx.stroke();
-
-    scaleDegrees.sort((a,b)=> a.floatVal- b.floatVal);
-
-    // interval labels between consecutive degrees
-    ctx.font="20px JetBrains Mono";
-    ctx.fillStyle= cssVars.getPropertyValue("--interval-label-color").trim() || "#fffbcc";
-    ctx.textAlign="center";
-    ctx.textBaseline="middle";
-
-    let placedLabels=[];
-    for(let i=0; i< scaleDegrees.length-1; i++){
-      let leftVal=  scaleDegrees[i].floatVal;
-      let rightVal= scaleDegrees[i+1].floatVal;
-      let gap= rightVal/ leftVal;
-      let mid= 0.5*(leftVal+ rightVal);
-      let midX= ratioToX(mid, LEFT_X, WIDTH);
-      let gapStr= fractionStringApprox(gap);
-      let lbl= positionLabel(midX, MID_Y-50, gapStr, "interval", placedLabels);
-      drawLabel(lbl);
-    }
-
-    // now draw each scaleDegree's vertical line & ratio/freq label
-    for(let deg of scaleDegrees){
-      let x= ratioToX(deg.floatVal, LEFT_X, WIDTH);
-
-      // normal vertical line
-      ctx.strokeStyle= cssVars.getPropertyValue("--canvas-vertical-line-color").trim()|| "#66b0ff";
-      ctx.lineWidth= 4;
-      ctx.beginPath();
-      ctx.moveTo(x, MID_Y-70);
-      ctx.lineTo(x, MID_Y+70);
-      ctx.stroke();
-
-      // check for pulse
-      if(deg.pulse && deg.pulse.start){
-        let pulseDuration=1000; // ms
-        let elapsed= performance.now()- deg.pulse.start;
-        let alpha= 1- elapsed/ pulseDuration;
-        if(alpha>0){
-          ctx.save();
-          let hue= ratioToHue(deg.floatVal);
-          ctx.strokeStyle= `hsla(${hue},100%,60%,${alpha})`;
-          ctx.lineWidth = 6;
-          ctx.beginPath();
-          ctx.moveTo(x, MID_Y-70);
-          ctx.lineTo(x, MID_Y+70);
-          ctx.stroke();
-          ctx.restore();
-        } else {
-          deg.pulse=null;
-        }
-      }
-
-      // ratio label
-      ctx.font="20px JetBrains Mono";
-      ctx.fillStyle= cssVars.getPropertyValue("--ratio-label-color").trim() || "#f0c";
-      let ratioLbl= positionLabel(x, MID_Y-90, deg.fractionText, "ratio", placedLabels);
-      ratioLbl.degree= deg;
-      drawLabel(ratioLbl);
-
-      // freq label
-      ctx.font="20px JetBrains Mono";
-      ctx.fillStyle= cssVars.getPropertyValue("--freq-label-color").trim() || "#0ff";
-      let freqVal= deg.floatVal* tonic;
-      let freqStr= freqVal.toFixed(2)+ " Hz";
-      let freqLbl= positionLabel(x, MID_Y+90, freqStr, "freq", placedLabels, true);
-      freqLbl.degree= deg;
-      drawLabel(freqLbl);
-
-      // selected "checkbox"
-      let checkBoxSize=20;
-      let checkBoxX= x- checkBoxSize/2;
-      let checkBoxY= ratioLbl.y- 30;
-      registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, ()=>{
-        deg.selected= !deg.selected;
-      });
-      ctx.save();
-      ctx.strokeStyle= cssVars.getPropertyValue("--ratio-label-color").trim()|| "#f0c";
-      ctx.lineWidth= 2;
-      ctx.strokeRect(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize);
-      if(deg.selected){
-        ctx.beginPath();
-        ctx.moveTo(checkBoxX, checkBoxY);
-        ctx.lineTo(checkBoxX+ checkBoxSize, checkBoxY+ checkBoxSize);
-        ctx.moveTo(checkBoxX+ checkBoxSize, checkBoxY);
-        ctx.lineTo(checkBoxX, checkBoxY+ checkBoxSize);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+  // Clear clickable regions
+  clickableRegions = [];
+  
+  // Compute canvas geometry
+  LEFT_X = 0.05 * canvas.width;
+  RIGHT_X = 0.95 * canvas.width;
+  MID_Y = canvas.height / 2.5;
+  WIDTH = RIGHT_X - LEFT_X;
+  
+  // Draw the main horizontal line
+  ctx.strokeStyle = cssVars.getPropertyValue("--canvas-line-color").trim() || "#0af";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(LEFT_X, MID_Y);
+  ctx.lineTo(RIGHT_X, MID_Y);
+  ctx.stroke();
+  
+  // Sort the scale degrees
+  scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
+  
+  // Draw interval labels between consecutive degrees
+  ctx.font = "20px JetBrains Mono";
+  ctx.fillStyle = cssVars.getPropertyValue("--interval-label-color").trim() || "#fffbcc";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  let placedLabels = [];
+  for(let i = 0; i < scaleDegrees.length - 1; i++){
+    let leftVal = scaleDegrees[i].floatVal;
+    let rightVal = scaleDegrees[i+1].floatVal;
+    let gap = rightVal / leftVal;
+    let mid = 0.5 * (leftVal + rightVal);
+    let midX = ratioToX(mid, LEFT_X, WIDTH);
+    let gapStr = fractionStringApprox(gap);
+    let lbl = positionLabel(midX, MID_Y - 50, gapStr, "interval", placedLabels);
+    drawLabel(lbl);
   }
-
+  
+  // For each scale degree, draw the marker, its pulse, and its labels
+  for(let deg of scaleDegrees) {
+    let x = ratioToX(deg.floatVal, LEFT_X, WIDTH);
+    
+    // Draw the vertical marker line
+    ctx.strokeStyle = cssVars.getPropertyValue("--canvas-vertical-line-color").trim() || "#66b0ff";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x, MID_Y - 70);
+    ctx.lineTo(x, MID_Y + 70);
+    ctx.stroke();
+    
+    // Draw the glow (pulse) effect:
+    if(draggingMarker === deg) {
+      // If currently dragging, draw a persistent glow at full opacity.
+      let hue = ratioToHue(deg.floatVal);
+      ctx.save();
+      ctx.strokeStyle = `hsla(${hue}, 100%, 60%, 1)`;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(x, MID_Y - 70);
+      ctx.lineTo(x, MID_Y + 70);
+      ctx.stroke();
+      ctx.restore();
+    } else if(deg.pulse && deg.pulse.start) {
+      // Otherwise, draw the decaying pulse.
+      let pulseDuration = 1500; // milliseconds
+      let elapsed = performance.now() - deg.pulse.start;
+      let alpha = 1 - elapsed / pulseDuration;
+      if(alpha > 0){
+        ctx.save();
+        let hue = ratioToHue(deg.floatVal);
+        ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${alpha})`;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(x, MID_Y - 70);
+        ctx.lineTo(x, MID_Y + 70);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        deg.pulse = null;
+      }
+    }
+    
+    // Draw the ratio label
+    ctx.font = "20px JetBrains Mono";
+    ctx.fillStyle = cssVars.getPropertyValue("--ratio-label-color").trim() || "#f0c";
+    let ratioLbl = positionLabel(x, MID_Y - 90, deg.fractionText, "ratio", placedLabels);
+    ratioLbl.degree = deg;
+    drawLabel(ratioLbl);
+    
+    // Draw the frequency label
+    ctx.font = "20px JetBrains Mono";
+    ctx.fillStyle = cssVars.getPropertyValue("--freq-label-color").trim() || "#0ff";
+    let freqVal = deg.floatVal * tonic;
+    let freqStr = freqVal.toFixed(2) + " Hz";
+    let freqLbl = positionLabel(x, MID_Y + 90, freqStr, "freq", placedLabels, true);
+    freqLbl.degree = deg;
+    drawLabel(freqLbl);
+    
+    // Draw the selection checkbox
+    let checkBoxSize = 20;
+    let checkBoxX = x - checkBoxSize / 2;
+    let checkBoxY = ratioLbl.y - 30;
+    registerClickable(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize, () => {
+      deg.selected = !deg.selected;
+    });
+    ctx.save();
+    ctx.strokeStyle = cssVars.getPropertyValue("--ratio-label-color").trim() || "#f0c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize);
+    if(deg.selected){
+      ctx.beginPath();
+      ctx.moveTo(checkBoxX, checkBoxY);
+      ctx.lineTo(checkBoxX + checkBoxSize, checkBoxY + checkBoxSize);
+      ctx.moveTo(checkBoxX + checkBoxSize, checkBoxY);
+      ctx.lineTo(checkBoxX, checkBoxY + checkBoxSize);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
   // ratio in [1..2] => t in [0..1]
   function ratioToX(r, leftX, width){
     let t= (r-1)/(2-1);
@@ -752,9 +775,6 @@ function sampleNormal(mean, stdev) {
 
     draggingMarker.floatVal= snapped;
     draggingMarker.fractionText= fractionStringApprox(snapped);
-
-    // small puffs while dragging
-    createParticlesGaussian(draggingMarker, 5);
   }
 
   function getMarkerAtPosition(mx, my){
@@ -1132,9 +1152,9 @@ function sampleNormal(mean, stdev) {
   }
 
   function ratioToHue(ratio){
-    // ratio in [1..2] => hue in [0..300]
+    // ratio in [1..2] => hue in [0..360]
     let t= ratio-1;
-    return 300* t;
+    return 360* t;
   }
 </script>
 </body>
