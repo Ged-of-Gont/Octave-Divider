@@ -2,135 +2,139 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>v0.1 Octave Divider</title>
+  <title>V0.1 OCTAVE DIVIDER</title>
+  <!-- Ensure proper scaling on mobile devices -->
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, shrink-to-fit=no">
+
+
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
-
 <body>
   <header>
-    <h1>v0.1 Octave Divider</h1>
+    <h1>V0.1 OCTAVE DIVIDER</h1>
     <div class="instructions">
       Set a tonic. Add intervals. Drag them around.<br> 
-      Click on the Hz to play note. Click on pink interval to delete. Click on the pink box to lock a note. <br>
-      Save a json to reload settings into this app. Save a .tun or .scl to load into other synths.
+      Click on the Hz to play note. Click on pink interval to delete.<br>
+      Click on the pink box to lock a note.<br>
+      Save a json to reload settings into this app. Save a .tun or .scl to load into other synths.<br>
     </div>
   </header>
   
-<div class="controls">
-  <label>Tonic Frequency:</label>
-  <select id="noteSelect">
-    <option value="110.00">A2 (~110.00 Hz)</option>
-    <option value="116.54">A#2 (~116.54 Hz)</option>
-    <option value="123.47">B2 (~123.47 Hz)</option>
-    <option value="130.81" selected>C3 (~130.81 Hz)</option>
-    <option value="138.59">C#3 (~138.59 Hz)</option>
-    <option value="146.83">D3 (~146.83 Hz)</option>
-    <option value="155.56">D#3 (~155.56 Hz)</option>
-    <option value="164.81">E3 (~164.81 Hz)</option>
-    <option value="174.61">F3 (~174.61 Hz)</option>
-    <option value="185.00">F#3 (~185.00 Hz)</option>
-    <option value="196.00">G3 (~196.00 Hz)</option>
-    <option value="207.65">G#3 (~207.65 Hz)</option>
-    <option value="220.00">A3 (~220.00 Hz)</option>
-    <option value="233.08">A#3 (~233.08 Hz)</option>
-    <option value="246.94">B3 (~246.94 Hz)</option>
-    <option value="261.63">C4 (~261.63 Hz)</option>
-    <option value="440.00">A4 (~440.00 Hz)</option>
-  </select>
-  <input id="tonicInput" type="number" value="130.81" step="0.01" />
-  <button id="setTonicBtn">Set Tonic</button>
+  <audio id="unlockSound" src="onesecsilence.mp3" preload="auto"></audio>
 
-  <div class="spacer"></div>
-  <label>Enter a # (1 < # < 2):</label>
-  <input id="intervalInput" type="text" placeholder="e.g. 3/2 or 2^(6/12)" />
-  <button id="addIntervalBtn">Add Interval</button>
-  <button id="clearAllBtn">Clear All</button>
+  <div class="controls">
+    
+    <div class="controlunit">
+    <label><span>SELECT a tonic:</span>  </label>
+    <select id="noteSelect">
+      <option value="110.00">A2 (~110.00 Hz)</option>
+      <option value="130.81" selected>C3 (~130.81 Hz)</option>
+      <option value="261.63">C4 (~261.63 Hz)</option>
+    </select>
+    </div>
 
-  <div class="spacer"></div>
-  <label>Scale Presets:</label>
-  <select id="presetSelect">
-    <optgroup label="Harmonic">
-      <option value="harmonic-4">4 partials</option>
-      <option value="harmonic-5">5 partials</option>
-      <option value="harmonic-6">6 partials</option>
-      <option value="harmonic-7">7 partials</option>
-      <option value="harmonic-8">8 partials</option>
-      <option value="harmonic-9">9 partials</option>
-      <option value="harmonic-10">10 partials</option>
-      <option value="harmonic-11">11 partials</option>
-      <option value="harmonic-12">12 partials</option>
-      <option value="harmonic-13">13 partials</option>
-      <option value="harmonic-14">14 partials</option>
-      <option value="harmonic-15">15 partials</option>
-      <option value="harmonic-16">16 partials</option>
-      <option value="harmonic-17">17 partials</option>
-      <option value="harmonic-18">18 partials</option>
-      <option value="harmonic-19">19 partials</option>
-      <option value="harmonic-20">20 partials</option>
-      <option value="harmonic-21">21 partials</option>
-      <option value="harmonic-22">22 partials</option>
-      <option value="harmonic-23">23 partials</option>
-      <option value="harmonic-24">24 partials</option>
-    </optgroup>
-    <optgroup label="Equal Temper">
-      <option value="equal-2">2 TET</option>
-      <option value="equal-3">3 TET</option>
-      <option value="equal-4">4 TET</option>
-      <option value="equal-5">5 TET</option>
-      <option value="equal-6">6 TET</option>
-      <option value="equal-7">7 TET</option>
-      <option value="equal-8">8 TET</option>
-      <option value="equal-9">9 TET</option>
-      <option value="equal-10">10 TET</option>
-      <option value="equal-11">11 TET</option>
-      <option value="equal-12">12 TET</option>
-      <option value="equal-13">13 TET</option>
-      <option value="equal-18">18 TET</option>
-      <option value="equal-19">19 TET</option>
-      <option value="equal-22">22 TET</option>
-      <option value="equal-24">24 TET</option>
-      <option value="equal-27">27 TET</option>
-      <option value="equal-28">28 TET</option>
-      <option value="equal-29">29 TET</option>
-      <option value="equal-31">31 TET</option>
-    </optgroup>
-    <optgroup label="Custom">
-      <option value="custom-comingsoon">Coming soon!</option>
-    </optgroup>
-  </select>
-  <button id="playScaleBtn">Play Scale</button>
-</div>
 
-<div id="canvas-container">
-  <canvas id="scale-canvas"></canvas>
-</div>
-
-<div class="controls">
-  <button id="saveBtn">Save</button>
-  <button id="loadBtn">Load</button>
-  <input type="file" id="fileInput" accept="application/json" style="display:none" />
-  <label for="formatSelect">Format:</label>
-  <select id="formatSelect">
-    <option value="json">JSON</option>
-    <option value="scl">SCL only</option>
-    <option value="scl_kbm">SCL + KBM</option>
-    <option value="tun">TUN (AnaMark)</option>
-  </select>
-  <div class="spacer"></div>
-  <div id="midiControls">
-  <label for="refMidiNoteInput">Ref MIDI note:</label>
-  <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
-  <label for="refFreqInput">Ref freq (Hz):</label>
-  <input id="refFreqInput" type="number" value="261.63" step="0.01" />
-  <label for="lowestNoteInput">Lowest MIDI note:</label>
-  <input id="lowestNoteInput" type="number" value="0" min="0" max="127" />
-  <label for="highestNoteInput">Highest MIDI note:</label>
-  <input id="highestNoteInput" type="number" value="127" min="0" max="127" />
+    <div class="controlunit">
+      <label> or, ENTER a frequency in Hz: </label>
+      <div class="inputcontrolunit">
+        <input id="tonicInput" type="number" value="130.81" step="0.01" />
+        <button id="setTonicBtn">Set Tonic</button>
+      </div>
+    </div>
   </div>
-</div>
-
-<script src="OD.js"></script> 
-
+  
+  <div class="controls">
+    <div class="controlunit">
+      <label> ENTER a # between 1 & 2</label>
+      <div class="inputcontrolunit">
+        <input id="intervalInput" type="text" placeholder="e.g. 3/2 or 1.25 or 2^(6/12)" />
+        <button id="addIntervalBtn">Add Interval</button>
+      </div>
+    </div>
+   
+    <div class="controlunit">
+    <label>SELECT a scale preset:</label>
+    <select id="presetSelect">
+      <optgroup label="Harmonic">
+        <option value="harmonic-4">4 partials</option>
+        <option value="harmonic-5">5 partials</option>
+        <option value="harmonic-6">6 partials</option>
+        <option value="harmonic-7">7 partials</option>
+        <option value="harmonic-8">8 partials</option>
+        <option value="harmonic-9">9 partials</option>
+        <option value="harmonic-10">10 partials</option>
+        <option value="harmonic-11">11 partials</option>
+        <option value="harmonic-12">12 partials</option>
+        <option value="harmonic-13">13 partials</option>
+        <option value="harmonic-14">14 partials</option>
+        <option value="harmonic-15">15 partials</option>
+        <option value="harmonic-16">16 partials</option>
+        
+      </optgroup>
+      <optgroup label="Equal Temper">
+        <option value="equal-2">2 TET</option>
+        <option value="equal-3">3 TET</option>
+        <option value="equal-4">4 TET</option>
+        <option value="equal-5">5 TET</option>
+        <option value="equal-6">6 TET</option>
+        <option value="equal-7">7 TET</option>
+        <option value="equal-8">8 TET</option>
+        <option value="equal-9">9 TET</option>
+        <option value="equal-10">10 TET</option>
+        <option value="equal-11">11 TET</option>
+        <option value="equal-12">12 TET</option>
+        <option value="equal-13">13 TET</option>
+        <option value="equal-18">18 TET</option>
+        <option value="equal-19">19 TET</option>
+        <option value="equal-22">22 TET</option>
+        <option value="equal-24">24 TET</option>
+        <option value="equal-27">27 TET</option>
+        <option value="equal-28">28 TET</option>
+        <option value="equal-29">29 TET</option>
+        <option value="equal-31">31 TET</option>
+      </optgroup>
+      <optgroup label="Custom">
+        <option value="custom-comingsoon">Coming soon!</option>
+      </optgroup>
+    </select>
+    </div>
+    <button id="playScaleBtn">Play Scale</button>
+    <button id="clearAllBtn">Clear All</button>
+  
+  </div>
+  <div id="canvas-container">
+    <canvas id="scale-canvas"></canvas>
+  </div>
+  
+  <div class="controls">
+    <!-- Save, load, and MIDI controls -->
+    <button id="loadBtn">Load</button>
+    <button id="saveBtn">Save</button>
+    <input type="file" id="fileInput" accept="application/json" style="display:none" />
+    
+    <div style="display:flex">
+      <label for="formatSelect" style="color: var(--color-fg);"></label>Format:</label>
+      <select id="formatSelect">
+      <option value="json">JSON (create a save file for Octave Divider)</option>
+      <option value="scl">SCL only</option>
+      <option value="scl_kbm">SCL + KBM</option>
+      <option value="tun">TUN (AnaMark)</option>
+      </select>
+      <div class="spacer"></div>
+      <div id="midiControls">
+        <label for="refMidiNoteInput">Ref MIDI note:</label>
+        <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
+        <label for="refFreqInput">Ref freq (Hz):</label>
+        <input id="refFreqInput" type="number" value="261.63" step="0.01" />
+        <label for="lowestNoteInput">Lowest MIDI note:</label>
+        <input id="lowestNoteInput" type="number" value="0" min="0" max="127" />
+        <label for="highestNoteInput">Highest MIDI note:</label>
+        <input id="highestNoteInput" type="number" value="127" min="0" max="127" />
+      </div>
+    </div>
+  </div>
+  
+  <script src="OD.js"></script> 
 </body>
 </html>
