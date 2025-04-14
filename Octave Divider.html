@@ -11,6 +11,8 @@
   <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 <body>
+
+
   <header>
     <h1>V0.1 OCTAVE DIVIDER</h1>
     <div class="instructions">
@@ -28,9 +30,15 @@
     <div class="controlunit">
     <label><span>SELECT a tonic:</span>  </label>
     <select id="noteSelect">
-      <option value="110.00">A2 (~110.00 Hz)</option>
-      <option value="130.81" selected>C3 (~130.81 Hz)</option>
-      <option value="261.63">C4 (~261.63 Hz)</option>
+      <option value="65.41" selected>C2 (~65.41 Hz)</option>
+      <option value="98">G2 (~98 Hz)</option>
+      <option value="146.83">D3 (~146.83 Hz)</option>
+      <option value="220">A3 (220 Hz)</option>
+      <option value="329.63">E4 (~329.63 Hz)</option>
+      <option value="493.88">B4 (~493.88 Hz)</option>
+      <option value="739.99">F#5 (~739.99 Hz)</option>
+      <option value="1108.73">C#6 (~1108.73 Hz)</option>
+    
     </select>
     </div>
 
@@ -107,8 +115,8 @@
     <canvas id="scale-canvas"></canvas>
   </div>
   
-  <div class="controls">
-        
+
+  <div class="controls">      
     <div class="controlunit"> 
       <label>SELECT a save format:</label>
        <select id="formatSelect">
@@ -116,39 +124,35 @@
        <option value="scl">SCL only</option>
        <option value="scl_kbm">SCL + KBM</option>
        <option value="tun">TUN (AnaMark)</option>
-      </select>
-    </div> 
-        
+       </select>
+    </div>
+   
     
-    <button id="saveBtn">Save</button>
-        <input type="file" id="fileInput" accept="application/json" style="display:none" />
-        <button id="loadBtn">Load (json only)</button>
+    <div id="midiControls">
+      <div class="controlunit"> 
+      <label for="refMidiNoteInput">Ref MIDI note:</label>
+      <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
+      </div>
       
-        
-    
-    
-    
-  </div>
-  <div id="midiControls">
-    <div class="controlunit"> 
-    <label for="refMidiNoteInput">Ref MIDI note:</label>
-    <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
+      <div class="controlunit"> 
+      <label for="refFreqInput">Ref freq (Hz):</label>
+      <input id="refFreqInput" type="number" value="261.63" step="0.01" />
+      </div>
+  
+      <div class="controlunit"> 
+      <label for="lowestNoteInput">Lowest MIDI note:</label>
+      <input id="lowestNoteInput" type="number" value="0" min="0" max="127" />
+      </div>
+  
+      <div class="controlunit"> 
+      <label for="highestNoteInput">Highest MIDI note:</label>
+      <input id="highestNoteInput" type="number" value="127" min="0" max="127" />
+      </div>  
     </div>
-    
-    <div class="controlunit"> 
-    <label for="refFreqInput">Ref freq (Hz):</label>
-    <input id="refFreqInput" type="number" value="261.63" step="0.01" />
-    </div>
-
-    <div class="controlunit"> 
-    <label for="lowestNoteInput">Lowest MIDI note:</label>
-    <input id="lowestNoteInput" type="number" value="0" min="0" max="127" />
-    </div>
-
-    <div class="controlunit"> 
-    <label for="highestNoteInput">Highest MIDI note:</label>
-    <input id="highestNoteInput" type="number" value="127" min="0" max="127" />
-    </div>
+    <button id="saveBtn">Save</button>
+    <input type="file" id="fileInput" accept="application/json" style="display:none" />
+    <button id="loadBtn">Load (json only)</button>  
+     
   </div>
 
 

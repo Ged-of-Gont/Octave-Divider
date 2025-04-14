@@ -26,7 +26,8 @@
 body {
   margin: 0;
   padding: 0;
-  background: var(--color-bg);
+  background-color: var(--color-bg); 
+  animation: scroll-left 5s linear infinite;
   color: var(--color-fg);
   font-family: 'JetBrains Mono', monospace;
  
@@ -60,6 +61,7 @@ header h1 {
   background: var(--color-fg);
   display: flex;
   flex-direction: column;
+  min-width: 200px;
   gap:7px;
 }
 
@@ -80,6 +82,8 @@ header h1 {
   line-height: 1.2em;
  
 }
+
+
 
 /************************************************************************
  * 3) Form Inputs, Buttons
@@ -153,10 +157,13 @@ select:disabled {
 
 #midiControls {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 1rem;      /* Adjust the gap spacing as needed */
-  margin-left: 1rem;  /* Optional: add margin if required */
+  flex-wrap: wrap;
+  align-items: baseline; /* force all controlunits to line up by text baseline */
+  gap: 1rem;
+}
+
+#midiControls .controlunit {
+  flex: 0 0 200px; /* or any uniform width you prefer */
 }
 
 /************************************************************************
@@ -177,4 +184,9 @@ select:disabled {
   z-index: 9999;
   touch-action: none;
   
+}
+
+@keyframes scroll-left {
+  0%   { background-position: 0 0; }
+  100% { background-position: -200px 0; }
 }
