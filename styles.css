@@ -151,13 +151,9 @@ select:disabled {
   opacity: 1; /* reset any opacity if needed */
 }
 
-
-
-
-
 #midiControls {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 1rem;      /* Adjust the gap spacing as needed */
   margin-left: 1rem;  /* Optional: add margin if required */
@@ -167,16 +163,18 @@ select:disabled {
  * 4) Canvas Container
  ************************************************************************/
  #canvas-container {
-  margin: 0 0;
+  position: relative;  /* so the child can use z-index reliably */
   box-sizing: border-box;
+  width: 100%;
+  height: auto;
 }
 
 #scale-canvas {
-  display: block;
+  position: relative;
   width: 100%;
-  max-width: 100%;
-  min-height: 400px;
-  margin: 0 0;
+  height: 400px; /* or something definite */
+  box-sizing: border-box;
+  z-index: 9999;
+  touch-action: none;
+  
 }
-
-

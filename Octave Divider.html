@@ -108,33 +108,52 @@
   </div>
   
   <div class="controls">
-    <!-- Save, load, and MIDI controls -->
-    <button id="loadBtn">Load</button>
-    <button id="saveBtn">Save</button>
-    <input type="file" id="fileInput" accept="application/json" style="display:none" />
-    
-    <div style="display:flex">
-      <label for="formatSelect" style="color: var(--color-fg);"></label>Format:</label>
-      <select id="formatSelect">
-      <option value="json">JSON (create a save file for Octave Divider)</option>
-      <option value="scl">SCL only</option>
-      <option value="scl_kbm">SCL + KBM</option>
-      <option value="tun">TUN (AnaMark)</option>
+        
+    <div class="controlunit"> 
+      <label>SELECT a save format:</label>
+       <select id="formatSelect">
+       <option value="json">JSON (compatible with this app only)</option>
+       <option value="scl">SCL only</option>
+       <option value="scl_kbm">SCL + KBM</option>
+       <option value="tun">TUN (AnaMark)</option>
       </select>
-      <div class="spacer"></div>
-      <div id="midiControls">
-        <label for="refMidiNoteInput">Ref MIDI note:</label>
-        <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
-        <label for="refFreqInput">Ref freq (Hz):</label>
-        <input id="refFreqInput" type="number" value="261.63" step="0.01" />
-        <label for="lowestNoteInput">Lowest MIDI note:</label>
-        <input id="lowestNoteInput" type="number" value="0" min="0" max="127" />
-        <label for="highestNoteInput">Highest MIDI note:</label>
-        <input id="highestNoteInput" type="number" value="127" min="0" max="127" />
-      </div>
+    </div> 
+        
+    
+    <button id="saveBtn">Save</button>
+        <input type="file" id="fileInput" accept="application/json" style="display:none" />
+        <button id="loadBtn">Load (json only)</button>
+      
+        
+    
+    
+    
+  </div>
+  <div id="midiControls">
+    <div class="controlunit"> 
+    <label for="refMidiNoteInput">Ref MIDI note:</label>
+    <input id="refMidiNoteInput" type="number" value="60" min="0" max="127" />
+    </div>
+    
+    <div class="controlunit"> 
+    <label for="refFreqInput">Ref freq (Hz):</label>
+    <input id="refFreqInput" type="number" value="261.63" step="0.01" />
+    </div>
+
+    <div class="controlunit"> 
+    <label for="lowestNoteInput">Lowest MIDI note:</label>
+    <input id="lowestNoteInput" type="number" value="0" min="0" max="127" />
+    </div>
+
+    <div class="controlunit"> 
+    <label for="highestNoteInput">Highest MIDI note:</label>
+    <input id="highestNoteInput" type="number" value="127" min="0" max="127" />
     </div>
   </div>
-  
+
+
+
+
   <script src="OD.js"></script> 
 </body>
 </html>

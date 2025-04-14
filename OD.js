@@ -124,6 +124,11 @@ function init(){
   canvas.addEventListener("mouseup", () => { draggingMarker = null; });
   canvas.addEventListener("mouseleave", () => { draggingMarker = null; });
 
+  canvas.addEventListener("touchstart", onCanvasTouchStart, { passive: false });
+  canvas.addEventListener("touchmove", onCanvasTouchMove, { passive: false });
+  canvas.addEventListener("touchend", onCanvasTouchEnd, { passive: false });
+  canvas.addEventListener("touchcancel", onCanvasTouchEnd, { passive: false });
+
   window.addEventListener("orientationchange", function() {
     setTimeout(function() {
       window.scrollTo(0, 0);
@@ -389,6 +394,8 @@ function positionLabel(cx, cy, text, kind, placedLabels, below=false){
   for(let i = 0; i < attempts; i++){
     let x0 = cx - textWidth / 2;
     let y0 = labelY - textHeight / 2;
+    if (x0 < 0) x0 = 0;
+    if (x0 + textWidth > canvas.width) x0 = canvas.width - textWidth;
     let box = { x: x0, y: y0, w: textWidth, h: textHeight };
     if(!collides(box, placedLabels)){
       placedLabels.push(box);
@@ -401,6 +408,7 @@ function positionLabel(cx, cy, text, kind, placedLabels, below=false){
   placedLabels.push({ x: x0, y: y0, w: textWidth, h: textHeight });
   return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
 }
+
 function collides(box, boxes){
   for(let b of boxes){
     if(!(box.x+box.w < b.x || box.x > b.x+b.w ||
@@ -410,6 +418,7 @@ function collides(box, boxes){
   }
   return false;
 }
+
 function drawLabel(label){
   let { x, y, w, h, text, kind } = label;
   let cx = x + w / 2;
@@ -446,6 +455,60 @@ function drawLabel(label){
       playNotesSimult(allFreqs);
     });
   }
+}
+/**************************************************************************
+ * Touch Events for Dragging (NEW)
+ **************************************************************************/
+function onCanvasTouchStart(e) {
+  // If you want single-finger drags only:
+  if (e.touches.length > 1) return;
+
+  e.preventDefault(); // Stop page scrolling while dragging on canvas
+
+  let rect = canvas.getBoundingClientRect();
+  let t = e.touches[0]; // first finger
+  let mx = t.clientX - rect.left;
+  let my = t.clientY - rect.top;
+
+  // Reuse the logic from onCanvasMouseDown
+  let marker = getMarkerAtPosition(mx, my);
+  if (marker) {
+    draggingMarker = marker;
+    return;
+  }
+  // If no marker, check clickable regions
+  for (let i = clickableRegions.length - 1; i >= 0; i--) {
+    let r = clickableRegions[i];
+    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+      r.callback(e);
+      break;
+    }
+  }
+}
+
+function onCanvasTouchMove(e) {
+  // Only drag if exactly one touch is active
+  if (!draggingMarker || e.touches.length > 1) return;
+
+  e.preventDefault();
+
+  let rect = canvas.getBoundingClientRect();
+  let t = e.touches[0];
+  let mx = t.clientX - rect.left;
+  let my = t.clientY - rect.top;
+
+  // Same logic as onCanvasMouseMove
+  let newRatio = xToRatio(mx, LEFT_X, WIDTH);
+  newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
+  let snapped = maybeSnap(newRatio);
+  draggingMarker.floatVal = snapped;
+  draggingMarker.fractionText = fractionStringApprox(snapped);
+}
+
+function onCanvasTouchEnd(e) {
+  // End dragging
+  draggingMarker = null;
+  e.preventDefault();
 }
 
 /**************************************************************************
