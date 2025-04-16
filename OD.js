@@ -451,22 +451,26 @@ function renderKeyboard() {
     ctx.fillText(freq.toFixed(2) + " Hz", x + keyWidth / 2, y + (2 * keyHeight) / 3);
     
     // Register clickable region for the entire key so that clicking plays its note
-    registerClickable(x, y, keyWidth, keyHeight, async () => {
-      // Use a different behavior if we're in keyboard view.
+    registerClickable(x, y, keyWidth, keyHeight, async (trigger) => {
+      // When triggered via touch, trigger will be the touch object.
+      // When triggered by mouse, it will be an event, which won’t have an identifier.
       if (viewMode === "keyboard") {
-        // If the key is already active (still held down), do nothing.
-        if (note.keyboardActive) return;
-        note.keyboardActive = true; // Mark it as active
-    
+        // Only for keyboard view: if this note is already active (i.e. triggered by the same touch),
+        // then do nothing.
+        if (note.keyboardActive !== undefined) return;
+        // If trigger has an identifier, set it.
+        if (trigger && trigger.identifier !== undefined) {
+          note.keyboardActive = trigger.identifier;
+        }
         await unlockAudio();
-        // Provide visual feedback for the press.
+        // Provide visual feedback.
         note.pulse = { start: performance.now() };
         createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
         
-        // Play only this key's note (no chord logic here).
+        // Play only this key's note (no chord-logic).
         playNotesSimult([ note.floatVal * tonic ]);
       } else {
-        // If not in keyboard view, use the original chord logic.
+        // In scale view, use the original behavior with chord and selected notes.
         await unlockAudio();
         note.pulse = { start: performance.now() };
         createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
@@ -482,6 +486,7 @@ function renderKeyboard() {
         playNotesSimult(allFreqs);
       }
     });
+    
     
   }
 }
@@ -571,32 +576,33 @@ function drawLabel(label) {
 function onCanvasTouchStart(e) {
   e.preventDefault(); // Prevent scrolling
   let rect = canvas.getBoundingClientRect();
-  
-  for (let i = 0; i < e.touches.length; i++) {
-    let t = e.touches[i];
+
+  // Use changedTouches to process only new touches
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    let t = e.changedTouches[i];
     let mx = t.clientX - rect.left;
     let my = t.clientY - rect.top;
-    
-    // Only allow dragging in scale view.
+
+    // In scale view, check for draggable markers.
     if (viewMode === "scale") {
       let marker = getMarkerAtPosition(mx, my);
       if (marker) {
         draggingMarker = marker;
-        continue; // Process next touch if there are multiple
+        continue;
       }
     }
     
-    // Check through clickable regions regardless of view mode.
+    // Check through clickable regions for new touch.
     for (let j = clickableRegions.length - 1; j >= 0; j--) {
       let r = clickableRegions[j];
       if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-        r.callback(e);
+        // Pass the individual touch object (t) to the callback.
+        r.callback(t);
         break;
       }
     }
   }
 }
-
 
 
 function onCanvasTouchMove(e) {
@@ -617,19 +623,23 @@ function onCanvasTouchMove(e) {
   }
 }
 
-
-
 function onCanvasTouchEnd(e) {
+  // Iterate over the touches that ended
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    let t = e.changedTouches[i];
+    // Clear the keyboardActive flag for any note that was triggered by this touch.
+    scaleDegrees.forEach(note => {
+      if (note.keyboardActive === t.identifier) {
+        note.keyboardActive = undefined;
+      }
+    });
+  }
+  // In case there are no more touches, clear dragging marker.
   if (e.touches.length === 0) {
     draggingMarker = null;
-    if (viewMode === "keyboard") {
-      scaleDegrees.forEach(note => { note.keyboardActive = false; });
-    }
   }
   e.preventDefault();
 }
-
-
 
 
 /**************************************************************************
