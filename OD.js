@@ -135,7 +135,14 @@ function init() {
   resizeCanvas();
   canvas.addEventListener("mousedown", onCanvasMouseDown);
   canvas.addEventListener("mousemove", onCanvasMouseMove);
-  canvas.addEventListener("mouseup", () => { draggingMarker = null; });
+  canvas.addEventListener("mouseup", () => { 
+    draggingMarker = null;
+    if (viewMode === "keyboard") {
+      // Reset the keyboardActive state on all notes.
+      scaleDegrees.forEach(note => { note.keyboardActive = false; });
+    }
+  });
+  
   canvas.addEventListener("mouseleave", () => { draggingMarker = null; });
 
   canvas.addEventListener("touchstart", onCanvasTouchStart, { passive: false });
@@ -445,25 +452,37 @@ function renderKeyboard() {
     
     // Register clickable region for the entire key so that clicking plays its note
     registerClickable(x, y, keyWidth, keyHeight, async () => {
-      // Unlock audio so that the browser is ready to play sound
-      await unlockAudio();
-      
-      // Give visual feedback: trigger a pulse and create particles for the key
-      note.pulse = { start: performance.now() };
-      createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
-      
-      // Check for other selected notes to form a chord (if applicable)
-      let others = scaleDegrees.filter(d => d.selected && d !== note);
-      others.forEach(o => {
-        o.pulse = { start: performance.now() };
-        createParticlesGaussian(o, DEFAULT_PARTICLE_COUNT);
-      });
-      
-      // Play the note and any chord notes: use the same callback as in your scale view
-      let freqValue = note.floatVal * tonic;
-      let allFreqs = [freqValue, ...others.map(o => o.floatVal * tonic)];
-      playNotesSimult(allFreqs);
+      // Use a different behavior if we're in keyboard view.
+      if (viewMode === "keyboard") {
+        // If the key is already active (still held down), do nothing.
+        if (note.keyboardActive) return;
+        note.keyboardActive = true; // Mark it as active
+    
+        await unlockAudio();
+        // Provide visual feedback for the press.
+        note.pulse = { start: performance.now() };
+        createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
+        
+        // Play only this key's note (no chord logic here).
+        playNotesSimult([ note.floatVal * tonic ]);
+      } else {
+        // If not in keyboard view, use the original chord logic.
+        await unlockAudio();
+        note.pulse = { start: performance.now() };
+        createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
+    
+        let others = scaleDegrees.filter(d => d.selected && d !== note);
+        others.forEach(o => {
+          o.pulse = { start: performance.now() };
+          createParticlesGaussian(o, DEFAULT_PARTICLE_COUNT);
+        });
+        
+        let freqValue = note.floatVal * tonic;
+        let allFreqs = [freqValue, ...others.map(o => o.floatVal * tonic)];
+        playNotesSimult(allFreqs);
+      }
     });
+    
   }
 }
 
@@ -603,9 +622,13 @@ function onCanvasTouchMove(e) {
 function onCanvasTouchEnd(e) {
   if (e.touches.length === 0) {
     draggingMarker = null;
+    if (viewMode === "keyboard") {
+      scaleDegrees.forEach(note => { note.keyboardActive = false; });
+    }
   }
   e.preventDefault();
 }
+
 
 
 
