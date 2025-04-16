@@ -274,7 +274,7 @@ function renderScale(){
   clickableRegions = [];
   LEFT_X = 0.05 * canvas.width;
   RIGHT_X = 0.95 * canvas.width;
-  MID_Y = canvas.height / 2.5;
+  MID_Y = canvas.height / 2;
   WIDTH = RIGHT_X - LEFT_X;
   
   // Draw main horizontal line
