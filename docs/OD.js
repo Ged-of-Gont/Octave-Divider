@@ -22,10 +22,11 @@ let isPlaying = false;
 const scaleInstructions = `
   a. Set the tonic note, the first note of the scale.<br><br>
   b. Add intervals. (manually or with preset scales)<br><br>
-  c. Tap or click on the Blue Hz # to hear the note.<br><br>
-  d. Tap or click on pink interval to delete that note.<br><br>
-  e. Tap or click on the pink box to lock a note, enabling chords.<br><br>
-  f. Save a json to reload settings into this app. Save a .tun or .scl to load into other synths.<br>
+  c. Drag the vertical bars. They will snap to simple ratios.
+  d. Tap or click on the Blue Hz # to hear the note.<br><br>
+  e. Tap or click on pink interval to delete that note.<br><br>
+  f. Tap or click on the pink box to lock a note, enabling chords.<br><br>
+  g. Save a json to reload settings into this app. Save a .tun or .scl to load into other synths.<br>
 `;
 
 const keyboardInstructions = `
