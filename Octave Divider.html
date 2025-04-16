@@ -19,17 +19,6 @@
   <header>
     <h1>V0.1 OCTAVE DIVIDER</h1>
     <div class="instructions">
-      a. Set the tonic note, the first note of the scale.<br>
-      <br>
-      b. Add intervals. (manually or with preset scales)<br>
-      <br>
-      c. Click on the Blue Hz # to hear the note.<br>
-      <br>
-      d. Click on Pink interval to delete that note.<br>
-      <br>
-      e. Click on the pink box to lock a note, enabling chords.<br>
-      <br>
-      f. Save a json to reload settings into this app. Save a .tun or .scl to load into other synths.<br>
     </div>
   </header>
 
@@ -74,6 +63,28 @@
     <div class="controlunit">
       <label>SELECT a scale preset:</label>
       <select id="presetSelect">
+        </optgroup>
+        <optgroup label="Equal Temper">
+          <option value="equal-12">12 TET (standard tuning)</option>
+          <option value="equal-3" selected>3 TET</option>
+          <option value="equal-4">4 TET</option>
+          <option value="equal-5">5 TET</option>
+          <option value="equal-6">6 TET</option>
+          <option value="equal-7">7 TET</option>
+          <option value="equal-8">8 TET</option>
+          <option value="equal-9">9 TET</option>
+          <option value="equal-10">10 TET</option>
+          <option value="equal-11">11 TET</option>
+          <option value="equal-13">13 TET</option>
+          <option value="equal-18">18 TET</option>
+          <option value="equal-19">19 TET</option>
+          <option value="equal-22">22 TET</option>
+          <option value="equal-24">24 TET</option>
+          <option value="equal-27">27 TET</option>
+          <option value="equal-28">28 TET</option>
+          <option value="equal-29">29 TET</option>
+          <option value="equal-31">31 TET</option>
+
         <optgroup label="Harmonic">
           <option value="harmonic-4">4 partials</option>
           <option value="harmonic-5">5 partials</option>
@@ -89,31 +100,9 @@
           <option value="harmonic-15">15 partials</option>
           <option value="harmonic-16">16 partials</option>
 
-        </optgroup>
-        <optgroup label="Equal Temper">
-          <option value="equal-2">2 TET</option>
-          <option value="equal-3">3 TET</option>
-          <option value="equal-4">4 TET</option>
-          <option value="equal-5">5 TET</option>
-          <option value="equal-6">6 TET</option>
-          <option value="equal-7">7 TET</option>
-          <option value="equal-8">8 TET</option>
-          <option value="equal-9">9 TET</option>
-          <option value="equal-10">10 TET</option>
-          <option value="equal-11">11 TET</option>
-          <option value="equal-12">12 TET</option>
-          <option value="equal-13">13 TET</option>
-          <option value="equal-18">18 TET</option>
-          <option value="equal-19">19 TET</option>
-          <option value="equal-22">22 TET</option>
-          <option value="equal-24">24 TET</option>
-          <option value="equal-27">27 TET</option>
-          <option value="equal-28">28 TET</option>
-          <option value="equal-29">29 TET</option>
-          <option value="equal-31">31 TET</option>
-        </optgroup>
         <optgroup label="Custom">
           <option value="custom-comingsoon">Coming soon!</option>
+
         </optgroup>
       </select>
     </div>

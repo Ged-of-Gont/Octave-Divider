@@ -2,7 +2,6 @@
  * 1) Variables + Setup
  **************************************************************************/
 const cssVars = getComputedStyle(document.documentElement);
-
 const DRAG_TOLERANCE_PX = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
 const DEFAULT_PARTICLE_COUNT = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 250;
 const PARTICLE_STDEV = parseFloat(cssVars.getPropertyValue("--particle-stdev")) || 6;
@@ -10,10 +9,32 @@ const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-
 const PARTICLE_LIFETIME_BASE = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 1000;
 const PARTICLE_LIFETIME_RND = parseFloat(cssVars.getPropertyValue("--particle-lifetime-random")) || 100;
 const GLOBAL_PARTICLE_CAP = parseInt(cssVars.getPropertyValue("--particle-global-cap")) || 2000;
-
+// Global configuration for keyboard style:
+const KEY_RAINBOW_SATURATION = "100%";  // used in computing the base rainbow color
+const KEY_RAINBOW_LIGHTNESS = "70%";      // used in computing the base rainbow color
+// For the pulse effect overlay:
+const KEY_PULSE_COLOR = "#edebd4"; // nearly white (can be changed as needed)
+const KEY_PULSE_DURATION = 300;    // pulse effect duration in milliseconds
 // Create AudioContext
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let isPlaying = false;
+
+const scaleInstructions = `
+  a. Set the tonic note, the first note of the scale.<br><br>
+  b. Add intervals. (manually or with preset scales)<br><br>
+  c. Tap or click on the Blue Hz # to hear the note.<br><br>
+  d. Tap or click on pink interval to delete that note.<br><br>
+  e. Tap or click on the pink box to lock a note, enabling chords.<br><br>
+  f. Save a json to reload settings into this app. Save a .tun or .scl to load into other synths.<br>
+`;
+
+const keyboardInstructions = `
+  a. Set the tonic note, the first note of the scale.<br><br>
+  b. Add intervals. (manually or with preset scales)<br><br>
+  c. Tap or click the keys to hear the notes. <br><br>
+  d. Each key plays only once per tap – release before playing again.<br><br>
+  e. Save a json to reload settings into this app. Save a .tun or .scl to load into other synths.<br>
+`;
 
 // The scale
 let scaleDegrees = [
@@ -25,7 +46,7 @@ let tonic = 261.63;
 // Particles
 let particles = [];
 
-let viewMode = "scale"; 
+let viewMode = "scale";
 
 // Canvas + geometry
 const canvas = document.getElementById("scale-canvas");
@@ -61,6 +82,23 @@ function init() {
 
   // Reference the silent audio element (must be present in your HTML)
   const silentAudio = document.getElementById('unlockSound');
+
+  const instructionsEl = document.querySelector(".instructions");
+  // Set the initial instructions text for scale view:
+  instructionsEl.innerHTML = scaleInstructions;
+
+  document.getElementById("toggleViewBtn").addEventListener("click", () => {
+    if (viewMode === "scale") {
+      viewMode = "keyboard";
+      document.getElementById("toggleViewBtn").innerText = "Show Scale";
+      instructionsEl.innerHTML = keyboardInstructions;
+    } else {
+      viewMode = "scale";
+      document.getElementById("toggleViewBtn").innerText = "Show Keyboard";
+      instructionsEl.innerHTML = scaleInstructions;
+    }
+  });
+ 
 
   document.getElementById("setTonicBtn").addEventListener("click", () => {
     let val = parseFloat(tonicInput.value);
@@ -108,17 +146,6 @@ function init() {
     isPlaying = false;
   });
 
-  document.getElementById("toggleViewBtn").addEventListener("click", () => {
-    if (viewMode === "scale") {
-      viewMode = "keyboard";
-      document.getElementById("toggleViewBtn").innerText = "Show Scale";
-    } else {
-      viewMode = "scale";
-      document.getElementById("toggleViewBtn").innerText = "Show Keyboard";
-    }
-  });
-  
-
 
   document.getElementById("saveBtn").addEventListener("click", doSave);
   document.getElementById("loadBtn").addEventListener("click", () => {
@@ -135,14 +162,14 @@ function init() {
   resizeCanvas();
   canvas.addEventListener("mousedown", onCanvasMouseDown);
   canvas.addEventListener("mousemove", onCanvasMouseMove);
-  canvas.addEventListener("mouseup", () => { 
+  canvas.addEventListener("mouseup", () => {
     draggingMarker = null;
     if (viewMode === "keyboard") {
       // Reset the keyboardActive state on all notes.
       scaleDegrees.forEach(note => { note.keyboardActive = false; });
     }
   });
-  
+
   canvas.addEventListener("mouseleave", () => { draggingMarker = null; });
 
   canvas.addEventListener("touchstart", onCanvasTouchStart, { passive: false });
@@ -412,81 +439,82 @@ function renderScale() {
 function renderKeyboard() {
   // Clear any clickable regions before drawing the keys
   clickableRegions = [];
-  
+
   // Clear the canvas (optional if already cleared in animate())
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
+
   // Determine the number of keys based on the scaleDegrees array
   let keysCount = scaleDegrees.length;
   if (keysCount < 1) return; // Safety check
-  
-  // Calculate the dimensions of each key
+
+  // Calculate dimensions for keys
   let keyWidth = canvas.width / keysCount;
   let keyHeight = canvas.height * 0.8;
-  let y = (canvas.height - keyHeight) / 2; // Center the keys vertically
+  let y = (canvas.height - keyHeight) / 2; // Center vertically
 
-  // Loop through the scaleDegrees to draw each key
+  // Loop through each key
   for (let i = 0; i < keysCount; i++) {
     let x = i * keyWidth;
-    
-    // Draw the key rectangle
-    ctx.fillStyle = "#ccc"; // Base fill color for keys
-    ctx.strokeStyle = "#333"; 
-    ctx.lineWidth = 2;
-    ctx.fillRect(x, y, keyWidth, keyHeight);
-    ctx.strokeRect(x, y, keyWidth, keyHeight);
-    
-    // Get the note information for labeling
     let note = scaleDegrees[i];
-    let freq = note.floatVal * tonic;
-    
-    // Draw the labels on the key (for ratio and frequency)
-    ctx.fillStyle = "#000"; 
+
+    // Compute the rainbow hue using your existing logic:
+    let hue = ratioToHue(note.floatVal);
+    // Use hsl with the global saturation and lightness constants:
+    ctx.fillStyle = `hsl(${hue}, ${KEY_RAINBOW_SATURATION}, ${KEY_RAINBOW_LIGHTNESS})`;
+    ctx.fillRect(x, y, keyWidth, keyHeight);
+    ctx.strokeStyle = "#333333"; // you can still use a fixed outline color or add a constant if desired
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, keyWidth, keyHeight);
+
+    // Draw the labels on the key, using a fixed text color:
+    ctx.fillStyle = "#000000";
     ctx.font = "16px JetBrains Mono";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    
-    // You might split the text into two lines: ratio on top, frequency on bottom
+    let freq = (note.floatVal * tonic).toFixed(2);
     ctx.fillText(note.fractionText, x + keyWidth / 2, y + keyHeight / 3);
-    ctx.fillText(freq.toFixed(2) + " Hz", x + keyWidth / 2, y + (2 * keyHeight) / 3);
-    
-    // Register clickable region for the entire key so that clicking plays its note
+    ctx.fillText(freq + " Hz", x + keyWidth / 2, y + (2 * keyHeight) / 3);
+
+    // If the key has a pulse active, overlay it with the pulse color
+    if (note.pulse && note.pulse.start) {
+      let elapsed = performance.now() - note.pulse.start;
+      let alpha = 1 - (elapsed / KEY_PULSE_DURATION);
+      if (alpha > 0) {
+        // Here we use the constant pulse color (nearly white) with the computed alpha.
+        ctx.fillStyle = hexToRgba(KEY_PULSE_COLOR, alpha);
+        ctx.fillRect(x, y, keyWidth, keyHeight);
+      } else {
+        note.pulse = null;
+      }
+    }
+
+    // Register the clickable region for the key.
     registerClickable(x, y, keyWidth, keyHeight, async (trigger) => {
-      // When triggered via touch, trigger will be the touch object.
-      // When triggered by mouse, it will be an event, which won’t have an identifier.
       if (viewMode === "keyboard") {
-        // Only for keyboard view: if this note is already active (i.e. triggered by the same touch),
-        // then do nothing.
-        if (note.keyboardActive !== undefined) return;
-        // If trigger has an identifier, set it.
-        if (trigger && trigger.identifier !== undefined) {
+        // If this is a touch event (with a defined identifier)
+        if (trigger && typeof trigger.identifier !== "undefined") {
+          if (note.keyboardActive !== undefined) return;  // already active for a touch
           note.keyboardActive = trigger.identifier;
         }
+        // For mouse events (trigger.identifier is undefined), bypass the block
         await unlockAudio();
-        // Provide visual feedback.
         note.pulse = { start: performance.now() };
-        createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
-        
-        // Play only this key's note (no chord-logic).
         playNotesSimult([ note.floatVal * tonic ]);
       } else {
-        // In scale view, use the original behavior with chord and selected notes.
+        // scale view behavior – chord logic as before...
         await unlockAudio();
         note.pulse = { start: performance.now() };
         createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
-    
         let others = scaleDegrees.filter(d => d.selected && d !== note);
         others.forEach(o => {
           o.pulse = { start: performance.now() };
           createParticlesGaussian(o, DEFAULT_PARTICLE_COUNT);
         });
-        
         let freqValue = note.floatVal * tonic;
         let allFreqs = [freqValue, ...others.map(o => o.floatVal * tonic)];
         playNotesSimult(allFreqs);
       }
     });
-    
     
   }
 }
@@ -591,7 +619,7 @@ function onCanvasTouchStart(e) {
         continue;
       }
     }
-    
+
     // Check through clickable regions for new touch.
     for (let j = clickableRegions.length - 1; j >= 0; j--) {
       let r = clickableRegions[j];
@@ -608,7 +636,7 @@ function onCanvasTouchStart(e) {
 function onCanvasTouchMove(e) {
   e.preventDefault();
   let rect = canvas.getBoundingClientRect();
-  
+
   // Only process dragging in scale view
   if (viewMode === "scale" && draggingMarker) {
     for (let i = 0; i < e.touches.length; i++) {
@@ -649,7 +677,7 @@ function onCanvasMouseDown(evt) {
   let rect = canvas.getBoundingClientRect();
   let mx = evt.clientX - rect.left;
   let my = evt.clientY - rect.top;
-  
+
   // Only allow dragging if the view mode is scale.
   if (viewMode === "scale") {
     let marker = getMarkerAtPosition(mx, my);
@@ -658,7 +686,7 @@ function onCanvasMouseDown(evt) {
       return;
     }
   }
-  
+
   // Process clickable regions regardless of the view mode.
   for (let i = clickableRegions.length - 1; i >= 0; i--) {
     let r = clickableRegions[i];
@@ -1023,4 +1051,19 @@ function parseFractionOrDecimal(s) {
 function ratioToHue(ratio) {
   let t = ratio - 1;
   return 360 * t;
+}
+function hexToRgba(hex, alpha) {
+  // Remove the hash if present
+  hex = hex.replace(/^#/, "");
+  let r, g, b;
+  if (hex.length === 3) {
+    r = parseInt(hex[0] + hex[0], 16);
+    g = parseInt(hex[1] + hex[1], 16);
+    b = parseInt(hex[2] + hex[2], 16);
+  } else if (hex.length === 6) {
+    r = parseInt(hex.substr(0, 2), 16);
+    g = parseInt(hex.substr(2, 2), 16);
+    b = parseInt(hex.substr(4, 2), 16);
+  }
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
