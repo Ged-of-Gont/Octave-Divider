@@ -3,13 +3,13 @@
  **************************************************************************/
 const cssVars = getComputedStyle(document.documentElement);
 
-const DRAG_TOLERANCE_PX  = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
-const DEFAULT_PARTICLE_COUNT  = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 250;
-const PARTICLE_STDEV          = parseFloat(cssVars.getPropertyValue("--particle-stdev")) || 6;
+const DRAG_TOLERANCE_PX = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
+const DEFAULT_PARTICLE_COUNT = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 250;
+const PARTICLE_STDEV = parseFloat(cssVars.getPropertyValue("--particle-stdev")) || 6;
 const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-velocity-scale")) || 0.02;
-const PARTICLE_LIFETIME_BASE  = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 1000;
-const PARTICLE_LIFETIME_RND   = parseFloat(cssVars.getPropertyValue("--particle-lifetime-random")) || 100;
-const GLOBAL_PARTICLE_CAP     = parseInt(cssVars.getPropertyValue("--particle-global-cap")) || 2000;
+const PARTICLE_LIFETIME_BASE = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 1000;
+const PARTICLE_LIFETIME_RND = parseFloat(cssVars.getPropertyValue("--particle-lifetime-random")) || 100;
+const GLOBAL_PARTICLE_CAP = parseInt(cssVars.getPropertyValue("--particle-global-cap")) || 2000;
 
 // Create AudioContext
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -24,6 +24,8 @@ let tonic = 261.63;
 
 // Particles
 let particles = [];
+
+let viewMode = "scale"; 
 
 // Canvas + geometry
 const canvas = document.getElementById("scale-canvas");
@@ -46,7 +48,7 @@ let snapCandidates = [];
  **************************************************************************/
 window.addEventListener("DOMContentLoaded", init);
 
-function init(){
+function init() {
   const noteSelect = document.getElementById("noteSelect");
   const tonicInput = document.getElementById("tonicInput");
   tonic = parseFloat(noteSelect.value);
@@ -62,7 +64,7 @@ function init(){
 
   document.getElementById("setTonicBtn").addEventListener("click", () => {
     let val = parseFloat(tonicInput.value);
-    if(!isFinite(val) || val <= 0){
+    if (!isFinite(val) || val <= 0) {
       alert("Tonic must be positive.");
       return;
     }
@@ -72,20 +74,20 @@ function init(){
   const intervalInput = document.getElementById("intervalInput");
   document.getElementById("addIntervalBtn").addEventListener("click", () => {
     let text = intervalInput.value.trim();
-    if(!text){
+    if (!text) {
       alert("Enter ratio, e.g. 3/2 or 1.414");
       return;
     }
     let r = parseFractionOrDecimal(text);
-    if(!isFinite(r) || r <= 1 || r >= 2){
+    if (!isFinite(r) || r <= 1 || r >= 2) {
       alert("Ratio must be >1 and <2");
       return;
     }
     // add the new interval
     let exist = scaleDegrees.some(d => Math.abs(d.floatVal - r) < 1e-7);
-    if(!exist){
+    if (!exist) {
       scaleDegrees.push({ fractionText: text, floatVal: r, selected: false });
-      scaleDegrees.sort((a,b) => a.floatVal - b.floatVal);
+      scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
     }
   });
 
@@ -98,13 +100,25 @@ function init(){
   document.getElementById("playScaleBtn").addEventListener("click", async () => {
     await unlockAudio(); // call our unlocking function
 
-    if(isPlaying) return;
+    if (isPlaying) return;
     isPlaying = true;
     setControlsEnabled(false);
     await playScaleOnce();
     setControlsEnabled(true);
     isPlaying = false;
   });
+
+  document.getElementById("toggleViewBtn").addEventListener("click", () => {
+    if (viewMode === "scale") {
+      viewMode = "keyboard";
+      document.getElementById("toggleViewBtn").innerText = "Show Scale";
+    } else {
+      viewMode = "scale";
+      document.getElementById("toggleViewBtn").innerText = "Show Keyboard";
+    }
+  });
+  
+
 
   document.getElementById("saveBtn").addEventListener("click", doSave);
   document.getElementById("loadBtn").addEventListener("click", () => {
@@ -129,8 +143,8 @@ function init(){
   canvas.addEventListener("touchend", onCanvasTouchEnd, { passive: false });
   canvas.addEventListener("touchcancel", onCanvasTouchEnd, { passive: false });
 
-  window.addEventListener("orientationchange", function() {
-    setTimeout(function() {
+  window.addEventListener("orientationchange", function () {
+    setTimeout(function () {
       window.scrollTo(0, 0);
     }, 200);
   });
@@ -178,13 +192,20 @@ async function unlockAudio() {
 /**************************************************************************
  * 3) Animation Loop
  **************************************************************************/
-function animate(){
+function animate() {
   requestAnimationFrame(animate);
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   updateParticles();
   drawParticles();
-  renderScale();
+
+  if (viewMode === "scale") {
+    renderScale();
+  } else if (viewMode === "keyboard") {
+    renderKeyboard();
+  }
 }
+
 
 /**************************************************************************
  * 4) Particle System (Original Glow + Distribution + Global Cap)
@@ -230,21 +251,21 @@ function sampleNormal(mean, stdev) {
   const theta = 2 * Math.PI * u2;
   return mean + stdev * r * Math.cos(theta);
 }
-function updateParticles(){
+function updateParticles() {
   let now = performance.now();
   particles = particles.filter(p => (now - p.born) < p.lifetime);
-  for(let p of particles) {
+  for (let p of particles) {
     p.x += p.vx;
     p.y += p.vy;
   }
 }
-function drawParticles(){
+function drawParticles() {
   ctx.globalCompositeOperation = 'lighter';
   let now = performance.now();
-  for(let p of particles){
+  for (let p of particles) {
     let age = now - p.born;
     let lifeFrac = age / p.lifetime;
-    if(lifeFrac > 1) lifeFrac = 1;
+    if (lifeFrac > 1) lifeFrac = 1;
     let alpha = 1 - lifeFrac;
     let sizeStart = 1.5, sizeEnd = 1;
     let size = sizeStart + (sizeEnd - sizeStart) * lifeFrac;
@@ -266,17 +287,17 @@ function drawParticles(){
 /**************************************************************************
  * 5) Render the Scale
  **************************************************************************/
-function resizeCanvas(){
+function resizeCanvas() {
   canvas.width = canvas.clientWidth;
   canvas.height = canvas.clientHeight;
 }
-function renderScale(){
+function renderScale() {
   clickableRegions = [];
   LEFT_X = 0.05 * canvas.width;
   RIGHT_X = 0.95 * canvas.width;
   MID_Y = canvas.height / 2;
   WIDTH = RIGHT_X - LEFT_X;
-  
+
   // Draw main horizontal line
   ctx.strokeStyle = cssVars.getPropertyValue("--color-line").trim() || "#35313f";
   ctx.lineWidth = 3;
@@ -292,9 +313,9 @@ function renderScale(){
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   let placedLabels = [];
-  for(let i = 0; i < scaleDegrees.length - 1; i++){
+  for (let i = 0; i < scaleDegrees.length - 1; i++) {
     let leftVal = scaleDegrees[i].floatVal;
-    let rightVal = scaleDegrees[i+1].floatVal;
+    let rightVal = scaleDegrees[i + 1].floatVal;
     let gap = rightVal / leftVal;
     let mid = 0.5 * (leftVal + rightVal);
     let midX = ratioToX(mid, LEFT_X, WIDTH);
@@ -305,7 +326,7 @@ function renderScale(){
   }
 
   // For each scale degree, render marker, labels, etc.
-  for(let deg of scaleDegrees) {
+  for (let deg of scaleDegrees) {
     let x = ratioToX(deg.floatVal, LEFT_X, WIDTH);
     ctx.strokeStyle = cssVars.getPropertyValue("--color-line").trim() || "#35313f";
     ctx.lineWidth = 4;
@@ -315,7 +336,7 @@ function renderScale(){
     ctx.stroke();
 
     // If dragging or pulsing, add glow (unchanged code)
-    if(draggingMarker === deg) {
+    if (draggingMarker === deg) {
       let hue = ratioToHue(deg.floatVal);
       ctx.save();
       ctx.strokeStyle = `hsla(${hue}, 100%, 60%, 1)`;
@@ -325,11 +346,11 @@ function renderScale(){
       ctx.lineTo(x, MID_Y + 70);
       ctx.stroke();
       ctx.restore();
-    } else if(deg.pulse && deg.pulse.start) {
+    } else if (deg.pulse && deg.pulse.start) {
       let pulseDuration = 1500;
       let elapsed = performance.now() - deg.pulse.start;
       let alpha = 1 - elapsed / pulseDuration;
-      if(alpha > 0){
+      if (alpha > 0) {
         let hue = ratioToHue(deg.floatVal);
         ctx.save();
         ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${alpha})`;
@@ -369,7 +390,7 @@ function renderScale(){
     ctx.strokeStyle = cssVars.getPropertyValue("--color-accent2").trim() || "#ff00cc";
     ctx.lineWidth = 2;
     ctx.strokeRect(checkBoxX, checkBoxY, checkBoxSize, checkBoxSize);
-    if(deg.selected){
+    if (deg.selected) {
       ctx.beginPath();
       ctx.moveTo(checkBoxX, checkBoxY);
       ctx.lineTo(checkBoxX + checkBoxSize, checkBoxY + checkBoxSize);
@@ -380,24 +401,93 @@ function renderScale(){
     ctx.restore();
   }
 }
-function ratioToX(r, leftX, width){
+
+function renderKeyboard() {
+  // Clear any clickable regions before drawing the keys
+  clickableRegions = [];
+  
+  // Clear the canvas (optional if already cleared in animate())
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Determine the number of keys based on the scaleDegrees array
+  let keysCount = scaleDegrees.length;
+  if (keysCount < 1) return; // Safety check
+  
+  // Calculate the dimensions of each key
+  let keyWidth = canvas.width / keysCount;
+  let keyHeight = canvas.height * 0.8;
+  let y = (canvas.height - keyHeight) / 2; // Center the keys vertically
+
+  // Loop through the scaleDegrees to draw each key
+  for (let i = 0; i < keysCount; i++) {
+    let x = i * keyWidth;
+    
+    // Draw the key rectangle
+    ctx.fillStyle = "#ccc"; // Base fill color for keys
+    ctx.strokeStyle = "#333"; 
+    ctx.lineWidth = 2;
+    ctx.fillRect(x, y, keyWidth, keyHeight);
+    ctx.strokeRect(x, y, keyWidth, keyHeight);
+    
+    // Get the note information for labeling
+    let note = scaleDegrees[i];
+    let freq = note.floatVal * tonic;
+    
+    // Draw the labels on the key (for ratio and frequency)
+    ctx.fillStyle = "#000"; 
+    ctx.font = "16px JetBrains Mono";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    // You might split the text into two lines: ratio on top, frequency on bottom
+    ctx.fillText(note.fractionText, x + keyWidth / 2, y + keyHeight / 3);
+    ctx.fillText(freq.toFixed(2) + " Hz", x + keyWidth / 2, y + (2 * keyHeight) / 3);
+    
+    // Register clickable region for the entire key so that clicking plays its note
+    registerClickable(x, y, keyWidth, keyHeight, async () => {
+      // Unlock audio so that the browser is ready to play sound
+      await unlockAudio();
+      
+      // Give visual feedback: trigger a pulse and create particles for the key
+      note.pulse = { start: performance.now() };
+      createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
+      
+      // Check for other selected notes to form a chord (if applicable)
+      let others = scaleDegrees.filter(d => d.selected && d !== note);
+      others.forEach(o => {
+        o.pulse = { start: performance.now() };
+        createParticlesGaussian(o, DEFAULT_PARTICLE_COUNT);
+      });
+      
+      // Play the note and any chord notes: use the same callback as in your scale view
+      let freqValue = note.floatVal * tonic;
+      let allFreqs = [freqValue, ...others.map(o => o.floatVal * tonic)];
+      playNotesSimult(allFreqs);
+    });
+  }
+}
+
+
+
+
+function ratioToX(r, leftX, width) {
   let t = (r - 1) / (2 - 1);
   return leftX + t * width;
 }
-function positionLabel(cx, cy, text, kind, placedLabels, below=false){
+function positionLabel(cx, cy, text, kind, placedLabels, below = false) {
   let metrics = ctx.measureText(text);
   let textWidth = metrics.width;
   let textHeight = 24;
   let labelY = cy;
   let step = below ? 5 : -5;
   let attempts = 40;
-  for(let i = 0; i < attempts; i++){
+  for (let i = 0; i < attempts; i++) {
     let x0 = cx - textWidth / 2;
     let y0 = labelY - textHeight / 2;
     if (x0 < 0) x0 = 0;
     if (x0 + textWidth > canvas.width) x0 = canvas.width - textWidth;
     let box = { x: x0, y: y0, w: textWidth, h: textHeight };
-    if(!collides(box, placedLabels)){
+    if (!collides(box, placedLabels)) {
       placedLabels.push(box);
       return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
     }
@@ -409,17 +499,17 @@ function positionLabel(cx, cy, text, kind, placedLabels, below=false){
   return { x: x0, y: y0, w: textWidth, h: textHeight, text, kind };
 }
 
-function collides(box, boxes){
-  for(let b of boxes){
-    if(!(box.x+box.w < b.x || box.x > b.x+b.w ||
-         box.y+box.h < b.y || box.y > b.y+b.h)){
+function collides(box, boxes) {
+  for (let b of boxes) {
+    if (!(box.x + box.w < b.x || box.x > b.x + b.w ||
+      box.y + box.h < b.y || box.y > b.y + b.h)) {
       return true;
     }
   }
   return false;
 }
 
-function drawLabel(label){
+function drawLabel(label) {
   let { x, y, w, h, text, kind } = label;
   let cx = x + w / 2;
   let cy = y + h / 2;
@@ -429,15 +519,15 @@ function drawLabel(label){
   ctx.fillText(text, cx, cy);
   ctx.restore();
 
-  if(kind === "ratio"){
+  if (kind === "ratio") {
     registerClickable(x, y, w, h, () => {
-      if(label.degree.floatVal === 1 || label.degree.floatVal === 2) return;
-      if(confirm(`Delete "${label.degree.fractionText}"?`)){
+      if (label.degree.floatVal === 1 || label.degree.floatVal === 2) return;
+      if (confirm(`Delete "${label.degree.fractionText}"?`)) {
         scaleDegrees = scaleDegrees.filter(d => d !== label.degree);
       }
     });
   }
-  else if(kind === "freq"){
+  else if (kind === "freq") {
     registerClickable(x, y, w, h, async () => {
       // NEW/UPDATED: unlock audio if frequency label is tapped first
       await unlockAudio();
@@ -460,79 +550,95 @@ function drawLabel(label){
  * Touch Events for Dragging (NEW)
  **************************************************************************/
 function onCanvasTouchStart(e) {
-  // If you want single-finger drags only:
-  if (e.touches.length > 1) return;
-
-  e.preventDefault(); // Stop page scrolling while dragging on canvas
-
+  e.preventDefault(); // Prevent scrolling
   let rect = canvas.getBoundingClientRect();
-  let t = e.touches[0]; // first finger
-  let mx = t.clientX - rect.left;
-  let my = t.clientY - rect.top;
-
-  // Reuse the logic from onCanvasMouseDown
-  let marker = getMarkerAtPosition(mx, my);
-  if (marker) {
-    draggingMarker = marker;
-    return;
-  }
-  // If no marker, check clickable regions
-  for (let i = clickableRegions.length - 1; i >= 0; i--) {
-    let r = clickableRegions[i];
-    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-      r.callback(e);
-      break;
+  
+  for (let i = 0; i < e.touches.length; i++) {
+    let t = e.touches[i];
+    let mx = t.clientX - rect.left;
+    let my = t.clientY - rect.top;
+    
+    // Only allow dragging in scale view.
+    if (viewMode === "scale") {
+      let marker = getMarkerAtPosition(mx, my);
+      if (marker) {
+        draggingMarker = marker;
+        continue; // Process next touch if there are multiple
+      }
+    }
+    
+    // Check through clickable regions regardless of view mode.
+    for (let j = clickableRegions.length - 1; j >= 0; j--) {
+      let r = clickableRegions[j];
+      if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+        r.callback(e);
+        break;
+      }
     }
   }
 }
 
+
+
 function onCanvasTouchMove(e) {
-  // Only drag if exactly one touch is active
-  if (!draggingMarker || e.touches.length > 1) return;
-
   e.preventDefault();
-
   let rect = canvas.getBoundingClientRect();
-  let t = e.touches[0];
-  let mx = t.clientX - rect.left;
-  let my = t.clientY - rect.top;
-
-  // Same logic as onCanvasMouseMove
-  let newRatio = xToRatio(mx, LEFT_X, WIDTH);
-  newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
-  let snapped = maybeSnap(newRatio);
-  draggingMarker.floatVal = snapped;
-  draggingMarker.fractionText = fractionStringApprox(snapped);
+  
+  // Only process dragging in scale view
+  if (viewMode === "scale" && draggingMarker) {
+    for (let i = 0; i < e.touches.length; i++) {
+      let t = e.touches[i];
+      let mx = t.clientX - rect.left;
+      let newRatio = xToRatio(mx, LEFT_X, WIDTH);
+      newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
+      let snapped = maybeSnap(newRatio);
+      draggingMarker.floatVal = snapped;
+      draggingMarker.fractionText = fractionStringApprox(snapped);
+    }
+  }
 }
+
+
 
 function onCanvasTouchEnd(e) {
-  // End dragging
-  draggingMarker = null;
+  if (e.touches.length === 0) {
+    draggingMarker = null;
+  }
   e.preventDefault();
 }
+
+
 
 /**************************************************************************
  * Mouse events for dragging
  **************************************************************************/
-function onCanvasMouseDown(evt){
+function onCanvasMouseDown(evt) {
   let rect = canvas.getBoundingClientRect();
   let mx = evt.clientX - rect.left;
   let my = evt.clientY - rect.top;
-  let marker = getMarkerAtPosition(mx, my);
-  if(marker){
-    draggingMarker = marker;
-    return;
+  
+  // Only allow dragging if the view mode is scale.
+  if (viewMode === "scale") {
+    let marker = getMarkerAtPosition(mx, my);
+    if (marker) {
+      draggingMarker = marker;
+      return;
+    }
   }
-  for(let i = clickableRegions.length - 1; i >= 0; i--){
+  
+  // Process clickable regions regardless of the view mode.
+  for (let i = clickableRegions.length - 1; i >= 0; i--) {
     let r = clickableRegions[i];
-    if(mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h){
+    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
       r.callback(evt);
       break;
     }
   }
 }
-function onCanvasMouseMove(evt){
-  if(!draggingMarker) return;
+
+function onCanvasMouseMove(evt) {
+  // Only execute dragging if we are in scale view and a marker is being dragged.
+  if (!draggingMarker || viewMode !== "scale") return;
   let rect = canvas.getBoundingClientRect();
   let mx = evt.clientX - rect.left;
   let newRatio = xToRatio(mx, LEFT_X, WIDTH);
@@ -541,41 +647,42 @@ function onCanvasMouseMove(evt){
   draggingMarker.floatVal = snapped;
   draggingMarker.fractionText = fractionStringApprox(snapped);
 }
-function getMarkerAtPosition(mx, my){
-  for(let deg of scaleDegrees){
-    if(deg.floatVal === 1 || deg.floatVal === 2) continue;
+
+function getMarkerAtPosition(mx, my) {
+  for (let deg of scaleDegrees) {
+    if (deg.floatVal === 1 || deg.floatVal === 2) continue;
     let lineX = ratioToX(deg.floatVal, LEFT_X, WIDTH);
     let top = MID_Y - 70, bot = MID_Y + 70;
-    if(my >= top && my <= bot && Math.abs(mx - lineX) <= DRAG_TOLERANCE_PX){
+    if (my >= top && my <= bot && Math.abs(mx - lineX) <= DRAG_TOLERANCE_PX) {
       return deg;
     }
   }
   return null;
 }
-function xToRatio(mx, leftX, width){
+function xToRatio(mx, leftX, width) {
   let t = (mx - leftX) / width;
   return 1 + t * (2 - 1);
 }
-function registerClickable(x, y, w, h, callback){
+function registerClickable(x, y, w, h, callback) {
   clickableRegions.push({ x, y, w, h, callback });
 }
 
 /**************************************************************************
  * Play the scale notes
  **************************************************************************/
-async function playScaleOnce(){
+async function playScaleOnce() {
   let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
   let noteDur = 0.5;
-  for(let deg of sorted){
+  for (let deg of sorted) {
     deg.pulse = { start: performance.now() };
     createParticlesGaussian(deg, DEFAULT_PARTICLE_COUNT);
     let freq = deg.floatVal * tonic;
     await playOneNoteSequential(freq, noteDur);
   }
 }
-function playOneNoteSequential(freq, duration){
+function playOneNoteSequential(freq, duration) {
   return new Promise(async resolve => {
-    if(audioCtx.state === "suspended"){
+    if (audioCtx.state === "suspended") {
       await audioCtx.resume();
     }
     const now = audioCtx.currentTime;
@@ -584,9 +691,9 @@ function playOneNoteSequential(freq, duration){
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
     let baseAmp = 0.2;
-    let freqWeight = Math.sqrt(440/freq);
+    let freqWeight = Math.sqrt(440 / freq);
     let finalAmp = baseAmp * freqWeight;
-    if(finalAmp > 0.8) finalAmp = 0.8;
+    if (finalAmp > 0.8) finalAmp = 0.8;
     gain.gain.setValueAtTime(finalAmp, now);
     gain.gain.linearRampToValueAtTime(0, now + duration);
     osc.connect(gain).connect(audioCtx.destination);
@@ -595,23 +702,23 @@ function playOneNoteSequential(freq, duration){
     osc.stop(now + duration);
   });
 }
-async function playNotesSimult(freqArray){
-  if(audioCtx.state === "suspended"){
+async function playNotesSimult(freqArray) {
+  if (audioCtx.state === "suspended") {
     await audioCtx.resume();
   }
   const now = audioCtx.currentTime;
   const duration = 1.0;
   let n = freqArray.length;
-  if(n < 1) return;
-  for(let freq of freqArray){
+  if (n < 1) return;
+  for (let freq of freqArray) {
     let osc = audioCtx.createOscillator();
     let gain = audioCtx.createGain();
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
-    let baseAmp = 0.2/n;
-    let freqWeight = Math.sqrt(440/freq);
+    let baseAmp = 0.2 / n;
+    let freqWeight = Math.sqrt(440 / freq);
     let finalAmp = baseAmp * freqWeight;
-    if(finalAmp > 0.8) finalAmp = 0.8;
+    if (finalAmp > 0.8) finalAmp = 0.8;
     gain.gain.setValueAtTime(finalAmp, now);
     gain.gain.linearRampToValueAtTime(0, now + duration);
     osc.connect(gain).connect(audioCtx.destination);
@@ -623,64 +730,64 @@ async function playNotesSimult(freqArray){
 /**************************************************************************
  * Snap & SCL / KBM / TUN functions
  **************************************************************************/
-function initSnapCandidates(){
+function initSnapCandidates() {
   snapCandidates = [];
-  for(let d = 1; d <= MAX_DEN; d++){
-    for(let n = 1; n < 2*d; n++){
-      let ratio = n/d;
-      if(ratio <= 1 || ratio >= 2) continue;
-      if(gcd(n, d) === 1){
+  for (let d = 1; d <= MAX_DEN; d++) {
+    for (let n = 1; n < 2 * d; n++) {
+      let ratio = n / d;
+      if (ratio <= 1 || ratio >= 2) continue;
+      if (gcd(n, d) === 1) {
         snapCandidates.push({ ratio, num: n, den: d });
       }
     }
   }
   snapCandidates.sort((a, b) => a.ratio - b.ratio);
 }
-function gcd(a, b){
+function gcd(a, b) {
   return b ? gcd(b, a % b) : a;
 }
-function maybeSnap(ratio){
+function maybeSnap(ratio) {
   let best = ratio;
   let bestDiff = Infinity;
-  for(let cand of snapCandidates){
-    let centsDiff = 1200 * Math.abs(Math.log2(ratio/cand.ratio));
-    if(centsDiff < SNAP_THRESHOLD_CENTS && centsDiff < bestDiff){
+  for (let cand of snapCandidates) {
+    let centsDiff = 1200 * Math.abs(Math.log2(ratio / cand.ratio));
+    if (centsDiff < SNAP_THRESHOLD_CENTS && centsDiff < bestDiff) {
       best = cand.ratio;
       bestDiff = centsDiff;
     }
   }
   return best;
 }
-function applyPresetSelection(){
+function applyPresetSelection() {
   let val = document.getElementById("presetSelect").value;
   let [type, numStr] = val.split("-");
-  if(!type) return;
-  if(type === "custom"){
+  if (!type) return;
+  if (type === "custom") {
     alert("Custom preset is not yet implemented. Coming soon!");
     return;
   }
-  if(!confirm("This will overwrite current intervals. Continue?")) return;
+  if (!confirm("This will overwrite current intervals. Continue?")) return;
   scaleDegrees = [
     { fractionText: "1/1", floatVal: 1.0, selected: false },
     { fractionText: "2/1", floatVal: 2.0, selected: false }
   ];
   let n = parseInt(numStr, 10);
-  if(type === "harmonic"){
-    for(let i = n+1; i <= 2*n; i++){
-      let valf = i/n;
-      if(Math.abs(valf - 1) < 1e-7 || Math.abs(valf - 2) < 1e-7) continue;
+  if (type === "harmonic") {
+    for (let i = n + 1; i <= 2 * n; i++) {
+      let valf = i / n;
+      if (Math.abs(valf - 1) < 1e-7 || Math.abs(valf - 2) < 1e-7) continue;
       scaleDegrees.push({ fractionText: i + "/" + n, floatVal: valf, selected: false });
     }
-  } else if(type === "equal"){
-    for(let k = 1; k < n; k++){
-      let valf = Math.pow(2, k/n);
-      if(Math.abs(valf - 1) < 1e-7 || Math.abs(valf - 2) < 1e-7) continue;
+  } else if (type === "equal") {
+    for (let k = 1; k < n; k++) {
+      let valf = Math.pow(2, k / n);
+      if (Math.abs(valf - 1) < 1e-7 || Math.abs(valf - 2) < 1e-7) continue;
       scaleDegrees.push({ fractionText: `2^(${k}/${n})`, floatVal: valf, selected: false });
     }
   }
   scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
 }
-function doSave(){
+function doSave() {
   const formatSelect = document.getElementById("formatSelect");
   let format = formatSelect.value;
   const refMidi = parseInt(document.getElementById("refMidiNoteInput").value, 10) || 60;
@@ -688,7 +795,7 @@ function doSave(){
   const lowestMidi = parseInt(document.getElementById("lowestNoteInput").value, 10) || 0;
   const highestMidi = parseInt(document.getElementById("highestNoteInput").value, 10) || 127;
   let fileContent = "", fileExtension = "";
-  if(format === "json"){
+  if (format === "json") {
     let data = {
       tonic: tonic,
       scaleDegrees: scaleDegrees.map(d => ({
@@ -701,27 +808,27 @@ function doSave(){
     fileExtension = "json";
     downloadFile(fileContent, fileExtension);
   }
-  else if(format === "scl"){
+  else if (format === "scl") {
     fileContent = generateSclFileContent("My Scale", scaleDegrees);
     fileExtension = "scl";
     downloadFile(fileContent, fileExtension);
   }
-  else if(format === "scl_kbm"){
+  else if (format === "scl_kbm") {
     let sclContent = generateSclFileContent("My Scale", scaleDegrees);
     let kbmContent = generateKbmFileContent("My Scale Mapping", scaleDegrees, refMidi, refFreq, lowestMidi, highestMidi);
     downloadFile(sclContent, "scl");
     setTimeout(() => downloadFile(kbmContent, "kbm"), 500);
   }
-  else if(format === "tun"){
+  else if (format === "tun") {
     fileContent = generateTunFileContent(scaleDegrees, refMidi, refFreq);
     fileExtension = "tun";
     downloadFile(fileContent, fileExtension);
   }
 }
-function downloadFile(content, extension){
+function downloadFile(content, extension) {
   let now = new Date();
   let YYYY = now.getFullYear();
-  let MM = String(now.getMonth()+1).padStart(2, "0");
+  let MM = String(now.getMonth() + 1).padStart(2, "0");
   let DD = String(now.getDate()).padStart(2, "0");
   let hh = String(now.getHours()).padStart(2, "0");
   let mm = String(now.getMinutes()).padStart(2, "0");
@@ -737,18 +844,18 @@ function downloadFile(content, extension){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-function doLoad(fileList){
-  if(!fileList || fileList.length < 1) return;
+function doLoad(fileList) {
+  if (!fileList || fileList.length < 1) return;
   let file = fileList[0];
   let reader = new FileReader();
   reader.onload = e => {
-    try{
+    try {
       let data = JSON.parse(e.target.result);
-      if(!data.scaleDegrees || !Array.isArray(data.scaleDegrees)){
+      if (!data.scaleDegrees || !Array.isArray(data.scaleDegrees)) {
         alert("Invalid file format: no scaleDegrees array found.");
         return;
       }
-      if(!confirm("Loading will overwrite current intervals. Continue?")) return;
+      if (!confirm("Loading will overwrite current intervals. Continue?")) return;
       tonic = data.tonic || 261.63;
       scaleDegrees = data.scaleDegrees.map(d => ({
         fractionText: d.fractionText,
@@ -756,31 +863,31 @@ function doLoad(fileList){
         selected: !!d.selected
       }));
       scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
-    } catch(err){
+    } catch (err) {
       alert("Error parsing JSON: " + err);
       console.error(err);
     }
   };
   reader.readAsText(file);
 }
-function generateSclFileContent(scaleName, scaleDegrees){
+function generateSclFileContent(scaleName, scaleDegrees) {
   let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
   let relevant = sorted.filter(d => d.floatVal < 2.000001);
   let numIntervals = relevant.length - 1;
-  if(numIntervals < 1) numIntervals = 1;
+  if (numIntervals < 1) numIntervals = 1;
   let lines = [];
   lines.push(`! ${scaleName}`);
   lines.push(`${scaleName}`);
   lines.push(`${numIntervals}`);
   lines.push("!");
-  for(let i = 1; i < relevant.length; i++){
+  for (let i = 1; i < relevant.length; i++) {
     let ratio = relevant[i].floatVal;
     let cents = 1200 * Math.log2(ratio);
     lines.push(cents.toFixed(5));
   }
   return lines.join("\n") + "\n";
 }
-function generateKbmFileContent(comment, scaleDegrees, refMidi, refFreq, lowestMidi, highestMidi){
+function generateKbmFileContent(comment, scaleDegrees, refMidi, refFreq, lowestMidi, highestMidi) {
   let lines = [];
   lines.push(`! ${comment}`);
   lines.push("!");
@@ -793,23 +900,23 @@ function generateKbmFileContent(comment, scaleDegrees, refMidi, refFreq, lowestM
   lines.push(`! Reference frequency for MIDI note ${refMidi} = ${refFreq.toFixed(3)} Hz`);
   let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
   const scaleCount = sorted.length;
-  for(let k = lowestMidi; k <= highestMidi; k++){
+  for (let k = lowestMidi; k <= highestMidi; k++) {
     let cycleLen = scaleCount - 1;
-    if(cycleLen < 1) cycleLen = 1;
+    if (cycleLen < 1) cycleLen = 1;
     let indexInScale = (k - lowestMidi) % cycleLen;
     lines.push(`${indexInScale}`);
   }
   return lines.join("\n") + "\n";
 }
-function generateTunFileContent(scaleDegrees, refMidi, refFreq){
+function generateTunFileContent(scaleDegrees, refMidi, refFreq) {
   let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
   let lines = [];
   lines.push("! Generated by Scale WKSP");
   lines.push("table begin");
-  for(let i = 0; i < sorted.length; i++){
+  for (let i = 0; i < sorted.length; i++) {
     let ratio = sorted[i].floatVal;
     let cents = 1200 * Math.log2(ratio);
-    lines.push(` ${i+1}) ${cents.toFixed(5)}`);
+    lines.push(` ${i + 1}) ${cents.toFixed(5)}`);
   }
   lines.push("table end");
   lines.push("octave 1200.0");
@@ -821,33 +928,33 @@ function generateTunFileContent(scaleDegrees, refMidi, refFreq){
 /**************************************************************************
  * Helpers
  **************************************************************************/
-function setControlsEnabled(enabled){
+function setControlsEnabled(enabled) {
   document.querySelectorAll(".controls button, .controls input, .controls select")
     .forEach(el => { el.disabled = !enabled; });
 }
-function fractionStringApprox(x){
+function fractionStringApprox(x) {
   let [num, den] = bestRationalApproximation(x, 100000);
   let approx = num / den;
   let err = Math.abs(x - approx);
   let label = `${num}/${den}`;
-  if(err > 0.01) label = "~" + label;
+  if (err > 0.01) label = "~" + label;
   return label;
 }
-function bestRationalApproximation(x, maxDen){
+function bestRationalApproximation(x, maxDen) {
   let pPrevPrev = 0, pPrev = 1;
   let qPrevPrev = 1, qPrev = 0;
   let fraction = x;
   let a = Math.floor(fraction);
   let p = a * pPrev + pPrevPrev;
   let q = a * qPrev + qPrevPrev;
-  while(true){
+  while (true) {
     let remainder = fraction - a;
-    if(Math.abs(remainder) < 1e-12) break;
+    if (Math.abs(remainder) < 1e-12) break;
     fraction = 1 / remainder;
     a = Math.floor(fraction);
     let pNext = a * p + pPrev;
     let qNext = a * q + qPrev;
-    if(qNext > maxDen) break;
+    if (qNext > maxDen) break;
     pPrevPrev = pPrev;
     qPrevPrev = qPrev;
     pPrev = p;
@@ -857,30 +964,30 @@ function bestRationalApproximation(x, maxDen){
   }
   return [p, q];
 }
-function parseFractionOrDecimal(s){
+function parseFractionOrDecimal(s) {
   s = s.trim();
-  if(!s) return NaN;
-  if(s.includes("^")){
+  if (!s) return NaN;
+  if (s.includes("^")) {
     let match = s.match(/^(.+)\^(.+)$/);
-    if(!match) return NaN;
+    if (!match) return NaN;
     let baseStr = match[1].replace(/^\(+/, "").replace(/\)+$/, "");
     let expStr = match[2].replace(/^\(+/, "").replace(/\)+$/, "");
     let baseVal = parseFractionOrDecimal(baseStr);
     let expVal = parseFractionOrDecimal(expStr);
-    if(!isFinite(baseVal) || !isFinite(expVal)) return NaN;
+    if (!isFinite(baseVal) || !isFinite(expVal)) return NaN;
     return Math.pow(baseVal, expVal);
   }
-  if(s.includes("/")){
+  if (s.includes("/")) {
     let parts = s.split("/");
-    if(parts.length !== 2) return NaN;
+    if (parts.length !== 2) return NaN;
     let num = parseFloat(parts[0]);
     let den = parseFloat(parts[1]);
-    if(!isFinite(num) || !isFinite(den) || den === 0) return NaN;
+    if (!isFinite(num) || !isFinite(den) || den === 0) return NaN;
     return num / den;
   }
   return parseFloat(s);
 }
-function ratioToHue(ratio){
+function ratioToHue(ratio) {
   let t = ratio - 1;
   return 360 * t;
 }
