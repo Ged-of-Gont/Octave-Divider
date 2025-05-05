@@ -17,6 +17,14 @@ const KEY_PULSE_COLOR = "#edebd4"; // nearly white (can be changed as needed)
 const KEY_PULSE_DURATION = 300;    // pulse effect duration in milliseconds
 // Create AudioContext
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const BASE_AMP = 0.5;   // baseline for one voice
+const MIN_AMP  = 0.2;   // never quieter than this
+const MAX_AMP  = 0.95;  // keep head‑room
+
+function ampForFreq(freq, voices = 1) {
+  let a = BASE_AMP / voices * Math.sqrt(440 / freq);
+  return Math.max(Math.min(a, MAX_AMP), MIN_AMP / voices);
+}
 let isPlaying = false;
 
 const scaleInstructions = `
@@ -742,47 +750,43 @@ async function playScaleOnce() {
     await playOneNoteSequential(freq, noteDur);
   }
 }
+/* ==== sequential note ==== */
 function playOneNoteSequential(freq, duration) {
   return new Promise(async resolve => {
-    if (audioCtx.state === "suspended") {
-      await audioCtx.resume();
-    }
+    if (audioCtx.state === "suspended") await audioCtx.resume();
     const now = audioCtx.currentTime;
-    let osc = audioCtx.createOscillator();
-    let gain = audioCtx.createGain();
+
+    const osc   = audioCtx.createOscillator();
+    const gain  = audioCtx.createGain();
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
-    let baseAmp = 0.2;
-    let freqWeight = Math.sqrt(440 / freq);
-    let finalAmp = baseAmp * freqWeight;
-    if (finalAmp > 0.8) finalAmp = 0.8;
-    gain.gain.setValueAtTime(finalAmp, now);
+
+    gain.gain.setValueAtTime(ampForFreq(freq), now);          // ← new
     gain.gain.linearRampToValueAtTime(0, now + duration);
+
     osc.connect(gain).connect(audioCtx.destination);
-    osc.onended = () => resolve();
+    osc.onended = resolve;
     osc.start(now);
     osc.stop(now + duration);
   });
 }
+
 async function playNotesSimult(freqArray) {
-  if (audioCtx.state === "suspended") {
-    await audioCtx.resume();
-  }
+  if (audioCtx.state === "suspended") await audioCtx.resume();
   const now = audioCtx.currentTime;
   const duration = 1.0;
-  let n = freqArray.length;
-  if (n < 1) return;
-  for (let freq of freqArray) {
-    let osc = audioCtx.createOscillator();
-    let gain = audioCtx.createGain();
+  const voices = freqArray.length;
+  if (!voices) return;
+
+  for (const freq of freqArray) {
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
-    let baseAmp = 0.2 / n;
-    let freqWeight = Math.sqrt(440 / freq);
-    let finalAmp = baseAmp * freqWeight;
-    if (finalAmp > 0.8) finalAmp = 0.8;
-    gain.gain.setValueAtTime(finalAmp, now);
+
+    gain.gain.setValueAtTime(ampForFreq(freq, voices), now);  // ← new
     gain.gain.linearRampToValueAtTime(0, now + duration);
+
     osc.connect(gain).connect(audioCtx.destination);
     osc.start(now);
     osc.stop(now + duration);
