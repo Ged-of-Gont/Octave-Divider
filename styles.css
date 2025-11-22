@@ -58,8 +58,10 @@ header {
 header a {
   display: block;
   flex: 0 0 auto;
-  width: 800px;           /* explicitly say this */
-  max-width: 100%;        /* allow scaling */
+  width: 800px;
+  /* explicitly say this */
+  max-width: 100%;
+  /* allow scaling */
 }
 
 
@@ -71,7 +73,7 @@ header a {
   margin-right: 5rem;
   flex-shrink: 1;
   fill: currentColor;
-  animation: rainbow-cycle 10s linear infinite;
+  animation: rainbow-cycle 30s linear infinite;
 }
 
 .controls {
@@ -267,33 +269,17 @@ select:disabled {
 }
 
 @keyframes rainbow-cycle {
-  0% {
-    color: red;
-  }
-
-  17% {
-    color: orange;
-  }
-
-  33% {
-    color: yellow;
-  }
-
-  50% {
-    color: green;
-  }
-
-  67% {
-    color: blue;
-  }
-
-  83% {
-    color: indigo;
-  }
-
-  100% {
-    color: violet;
-  }
+  0% {color: red;}
+  10% {color: orange;}
+  20% {color: yellow;}
+  30% {color: lightgreen;}
+  40% {color: skyblue;}
+  50% {color: royalblue;}
+  60% {color: blue;}
+  70% {color: indigo;}
+  80% {color: purple;}
+  90% {color: magenta;}
+  100% {color: red;}
 }
 
 @media (max-width: 850px) {
