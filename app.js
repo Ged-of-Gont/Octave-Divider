@@ -15,18 +15,29 @@ const KEY_RAINBOW_LIGHTNESS = "70%";      // used in computing the base rainbow 
 // For the pulse effect overlay:
 const KEY_PULSE_COLOR = "#edebd4"; // nearly white (can be changed as needed)
 const KEY_PULSE_DURATION = 300;    // pulse effect duration in milliseconds
-// Create AudioContext
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// Audio: lazy-create so iOS is happy
+let audioCtx = null;
 const BASE_AMP = 0.5;   // baseline for one voice
 const MIN_AMP  = 0.2;   // never quieter than this
-const MAX_AMP  = 0.95;  // keep head‑room
+const MAX_AMP  = 0.95;  // keep head-room
 
-window.addEventListener('pointerdown', function unlockAudioOnce() {
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
+async function unlockAudio() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+
+  if (!audioCtx) {
+    audioCtx = new Ctx();
   }
-  window.removeEventListener('pointerdown', unlockAudioOnce);
-}, { once: true });
+
+  if (audioCtx.state === "suspended" || audioCtx.state === "interrupted") {
+    try {
+      await audioCtx.resume();
+    } catch (e) {
+      // ignore
+    }
+  }
+}
 
 
 function ampForFreq(freq, voices = 1) {
@@ -217,27 +228,6 @@ function init() {
 
   formatSelect.addEventListener("change", toggleMidiControls);
   toggleMidiControls();
-}
-
-/**************************************************************************
- * NEW/UPDATED: Reusable unlockAudio() function
- **************************************************************************/
-async function unlockAudio() {
-  const silentAudio = document.getElementById('unlockSound');
-  if (!silentAudio) return;
-  try {
-    await silentAudio.play();
-    if (audioCtx.state === "suspended") {
-      await audioCtx.resume();
-    }
-    // Optionally, pause after a short delay
-    setTimeout(() => {
-      silentAudio.pause();
-      silentAudio.currentTime = 0;
-    }, 200);
-  } catch (err) {
-    console.warn("Silent track failed to play:", err);
-  }
 }
 
 /**************************************************************************
