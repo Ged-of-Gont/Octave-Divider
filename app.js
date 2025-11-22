@@ -21,6 +21,14 @@ const BASE_AMP = 0.5;   // baseline for one voice
 const MIN_AMP  = 0.2;   // never quieter than this
 const MAX_AMP  = 0.95;  // keep head‑room
 
+window.addEventListener('pointerdown', function unlockAudioOnce() {
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  window.removeEventListener('pointerdown', unlockAudioOnce);
+}, { once: true });
+
+
 function ampForFreq(freq, voices = 1) {
   let a = BASE_AMP / voices * Math.sqrt(440 / freq);
   return Math.max(Math.min(a, MAX_AMP), MIN_AMP / voices);
