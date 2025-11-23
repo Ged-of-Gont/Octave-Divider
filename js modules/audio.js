@@ -14,7 +14,7 @@ export function getAudioCtx() {
   return audioCtx;
 }
 
-// amplitude constants (kept internal – you can export if you want)
+// amplitude constants
 const BASE_AMP = 0.5;   // baseline for one voice
 const MIN_AMP  = 0.2;   // never quieter than this
 const MAX_AMP  = 0.95;  // keep head-room
@@ -25,21 +25,19 @@ export function ampForFreq(freq, voices = 1) {
 }
 
 // Reusable unlock function (used before any sound)
-// NEW: uses getAudioCtx() instead of raw audioCtx
 export async function unlockAudio() {
   try {
-    const ctx = getAudioCtx();
+    const ctx = getAudioCtx(); // ensure it exists
 
-    // On iOS, resume() must be in a user-gesture handler
     if (ctx.state === "suspended" || ctx.state === "interrupted") {
       await ctx.resume();
     }
 
-    // Ultra-short, almost-silent pulse just to fully unlock on mobile
+    // Ultra-short, basically silent pulse to fully unlock on mobile
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime); // basically silent
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime); // almost silent
     osc.type = "sine";
     osc.frequency.setValueAtTime(440, ctx.currentTime);
 
