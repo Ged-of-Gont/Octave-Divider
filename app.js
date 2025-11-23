@@ -2,12 +2,14 @@
 // Copyright (C) 2025  Jonathan William Horn
 // Licensed under the GNU AGPL v3.0 or later. See LICENSE file for details.
 
-
 import {
+  getAudioCtx,
   unlockAudio,
   playOneNoteSequential,
-  playNotesSimult
+  playNotesSimult,
+  setWaveform
 } from './js modules/audio.js';
+
 
 import {
   fractionStringApprox,
@@ -119,6 +121,16 @@ function init() {
       instructionsEl.innerHTML = scaleInstructions;
     }
   });
+
+  const waveformSelect = document.getElementById("waveformSelect");
+  if (waveformSelect) {
+    // set initial waveform from current UI value
+    setWaveform(waveformSelect.value);
+
+    waveformSelect.addEventListener("change", () => {
+      setWaveform(waveformSelect.value);
+    });
+  }
 
 
   document.getElementById("setTonicBtn").addEventListener("click", () => {
