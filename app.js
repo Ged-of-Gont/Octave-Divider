@@ -1,3 +1,8 @@
+// Oktavia — Microtonal Scale Workshop
+// Copyright (C) 2025  Jonathan William Horn
+// Licensed under the GNU AGPL v3.0 or later. See LICENSE file for details.
+
+
 import {
   unlockAudio,
   playOneNoteSequential,
@@ -85,22 +90,6 @@ let snapCandidates = [];
 /**************************************************************************
  * 2) Main Initialization
  **************************************************************************/
-document.getElementById("enableSoundBtn").addEventListener("click", async () => {
-  try {
-    // Use the unified unlock helper (handles mobile quirks)
-    await unlockAudio();
-
-    // Give a short audible confirmation
-    await playOneNoteSequential(440, 0.2);
-
-    alert("Audio enabled — you should hear a short beep.");
-  } catch (err) {
-    console.error("Enable sound failed", err);
-  }
-});
-
-
-
 window.addEventListener("DOMContentLoaded", init);
 
 function init() {
