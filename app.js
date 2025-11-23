@@ -1,10 +1,29 @@
+import {
+  audioCtx,
+  unlockAudio,
+  playOneNoteSequential,
+  playNotesSimult
+} from './js modules/audio.js';
+
+import {
+  fractionStringApprox,
+  parseFractionOrDecimal,
+  ratioToHue,
+  hexToRgba
+} from './js modules/math-utils.js';
+
+import {
+  generateSclFileContent,
+  generateKbmFileContent,
+  generateTunFileContent
+} from './js modules/tuning-export.js';
+
 /**************************************************************************
  * 1) Variables + Setup
  **************************************************************************/
 const cssVars = getComputedStyle(document.documentElement);
 const DRAG_TOLERANCE_PX = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
 const DEFAULT_PARTICLE_COUNT = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 250;
-const PARTICLE_STDEV = parseFloat(cssVars.getPropertyValue("--particle-stdev")) || 6;
 const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-velocity-scale")) || 0.02;
 const PARTICLE_LIFETIME_BASE = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 1000;
 const PARTICLE_LIFETIME_RND = parseFloat(cssVars.getPropertyValue("--particle-lifetime-random")) || 100;
@@ -16,34 +35,6 @@ const KEY_RAINBOW_LIGHTNESS = "70%";      // used in computing the base rainbow 
 const KEY_PULSE_COLOR = "#edebd4"; // nearly white (can be changed as needed)
 const KEY_PULSE_DURATION = 300;    // pulse effect duration in milliseconds
 
-// Audio: lazy-create so iOS is happy
-let audioCtx = null;
-const BASE_AMP = 0.5;   // baseline for one voice
-const MIN_AMP  = 0.2;   // never quieter than this
-const MAX_AMP  = 0.95;  // keep head-room
-
-async function unlockAudio() {
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return;
-
-  if (!audioCtx) {
-    audioCtx = new Ctx();
-  }
-
-  if (audioCtx.state === "suspended" || audioCtx.state === "interrupted") {
-    try {
-      await audioCtx.resume();
-    } catch (e) {
-      // ignore
-    }
-  }
-}
-
-
-function ampForFreq(freq, voices = 1) {
-  let a = BASE_AMP / voices * Math.sqrt(440 / freq);
-  return Math.max(Math.min(a, MAX_AMP), MIN_AMP / voices);
-}
 let isPlaying = false;
 
 const scaleInstructions = `
@@ -95,6 +86,22 @@ let snapCandidates = [];
 /**************************************************************************
  * 2) Main Initialization
  **************************************************************************/
+document.getElementById("enableSoundBtn").addEventListener("click", async () => {
+  try {
+    // Use the unified unlock helper (handles mobile quirks)
+    await unlockAudio();
+
+    // Give a short audible confirmation
+    await playOneNoteSequential(440, 0.2);
+
+    alert("Audio enabled — you should hear a short beep.");
+  } catch (err) {
+    console.error("Enable sound failed", err);
+  }
+});
+
+
+
 window.addEventListener("DOMContentLoaded", init);
 
 function init() {
@@ -108,8 +115,6 @@ function init() {
     tonicInput.value = noteSelect.value;
   });
 
-  // Reference the silent audio element (must be present in your HTML)
-  const silentAudio = document.getElementById('unlockSound');
 
   const instructionsEl = document.querySelector(".instructions");
   // Set the initial instructions text for scale view:
@@ -126,7 +131,7 @@ function init() {
       instructionsEl.innerHTML = scaleInstructions;
     }
   });
- 
+
 
   document.getElementById("setTonicBtn").addEventListener("click", () => {
     let val = parseFloat(tonicInput.value);
@@ -162,7 +167,7 @@ function init() {
     scaleDegrees = scaleDegrees.filter(d => d.floatVal === 1 || d.floatVal === 2);
   });
 
-  // NEW/UPDATED: "Play Scale" button handler with audio unlock
+  // "Play Scale" button handler with audio unlock
   document.getElementById("playScaleBtn").addEventListener("click", async () => {
     await unlockAudio(); // call our unlocking function
 
@@ -447,9 +452,6 @@ function renderKeyboard() {
   // Clear any clickable regions before drawing the keys
   clickableRegions = [];
 
-  // Clear the canvas (optional if already cleared in animate())
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   // Determine the number of keys based on the scaleDegrees array
   let keysCount = scaleDegrees.length;
   if (keysCount < 1) return; // Safety check
@@ -506,7 +508,7 @@ function renderKeyboard() {
         // For mouse events (trigger.identifier is undefined), bypass the block
         await unlockAudio();
         note.pulse = { start: performance.now() };
-        playNotesSimult([ note.floatVal * tonic ]);
+        playNotesSimult([note.floatVal * tonic]);
       } else {
         // scale view behavior – chord logic as before...
         await unlockAudio();
@@ -522,12 +524,9 @@ function renderKeyboard() {
         playNotesSimult(allFreqs);
       }
     });
-    
+
   }
 }
-
-
-
 
 function ratioToX(r, leftX, width) {
   let t = (r - 1) / (2 - 1);
@@ -588,7 +587,7 @@ function drawLabel(label) {
   }
   else if (kind === "freq") {
     registerClickable(x, y, w, h, async () => {
-      // NEW/UPDATED: unlock audio if frequency label is tapped first
+      // Unlock audio if frequency label is tapped first
       await unlockAudio();
 
       let baseDeg = label.degree;
@@ -606,7 +605,7 @@ function drawLabel(label) {
   }
 }
 /**************************************************************************
- * Touch Events for Dragging (NEW)
+ * Touch Events for Dragging
  **************************************************************************/
 function onCanvasTouchStart(e) {
   e.preventDefault(); // Prevent scrolling
@@ -748,52 +747,11 @@ async function playScaleOnce() {
     await playOneNoteSequential(freq, noteDur);
   }
 }
-/* ==== sequential note ==== */
-function playOneNoteSequential(freq, duration) {
-  return new Promise(async resolve => {
-    if (audioCtx.state === "suspended") await audioCtx.resume();
-    const now = audioCtx.currentTime;
-
-    const osc   = audioCtx.createOscillator();
-    const gain  = audioCtx.createGain();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(freq, now);
-
-    gain.gain.setValueAtTime(ampForFreq(freq), now);          // ← new
-    gain.gain.linearRampToValueAtTime(0, now + duration);
-
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.onended = resolve;
-    osc.start(now);
-    osc.stop(now + duration);
-  });
-}
-
-async function playNotesSimult(freqArray) {
-  if (audioCtx.state === "suspended") await audioCtx.resume();
-  const now = audioCtx.currentTime;
-  const duration = 1.0;
-  const voices = freqArray.length;
-  if (!voices) return;
-
-  for (const freq of freqArray) {
-    const osc  = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(freq, now);
-
-    gain.gain.setValueAtTime(ampForFreq(freq, voices), now);  // ← new
-    gain.gain.linearRampToValueAtTime(0, now + duration);
-
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start(now);
-    osc.stop(now + duration);
-  }
-}
 
 /**************************************************************************
- * Snap & SCL / KBM / TUN functions
+ * Snap & Preset Logic
  **************************************************************************/
+
 function initSnapCandidates() {
   snapCandidates = [];
   for (let d = 1; d <= MAX_DEN; d++) {
@@ -851,6 +809,7 @@ function applyPresetSelection() {
   }
   scaleDegrees.sort((a, b) => a.floatVal - b.floatVal);
 }
+
 function doSave() {
   const formatSelect = document.getElementById("formatSelect");
   let format = formatSelect.value;
@@ -889,6 +848,7 @@ function doSave() {
     downloadFile(fileContent, fileExtension);
   }
 }
+
 function downloadFile(content, extension) {
   let now = new Date();
   let YYYY = now.getFullYear();
@@ -934,60 +894,6 @@ function doLoad(fileList) {
   };
   reader.readAsText(file);
 }
-function generateSclFileContent(scaleName, scaleDegrees) {
-  let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
-  let relevant = sorted.filter(d => d.floatVal < 2.000001);
-  let numIntervals = relevant.length - 1;
-  if (numIntervals < 1) numIntervals = 1;
-  let lines = [];
-  lines.push(`! ${scaleName}`);
-  lines.push(`${scaleName}`);
-  lines.push(`${numIntervals}`);
-  lines.push("!");
-  for (let i = 1; i < relevant.length; i++) {
-    let ratio = relevant[i].floatVal;
-    let cents = 1200 * Math.log2(ratio);
-    lines.push(cents.toFixed(5));
-  }
-  return lines.join("\n") + "\n";
-}
-function generateKbmFileContent(comment, scaleDegrees, refMidi, refFreq, lowestMidi, highestMidi) {
-  let lines = [];
-  lines.push(`! ${comment}`);
-  lines.push("!");
-  const mapSize = (highestMidi - lowestMidi) + 1;
-  lines.push(`${mapSize}`);
-  lines.push(`${lowestMidi}`);
-  lines.push(`${highestMidi}`);
-  lines.push(`${refMidi}`);
-  lines.push("0");
-  lines.push(`! Reference frequency for MIDI note ${refMidi} = ${refFreq.toFixed(3)} Hz`);
-  let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
-  const scaleCount = sorted.length;
-  for (let k = lowestMidi; k <= highestMidi; k++) {
-    let cycleLen = scaleCount - 1;
-    if (cycleLen < 1) cycleLen = 1;
-    let indexInScale = (k - lowestMidi) % cycleLen;
-    lines.push(`${indexInScale}`);
-  }
-  return lines.join("\n") + "\n";
-}
-function generateTunFileContent(scaleDegrees, refMidi, refFreq) {
-  let sorted = [...scaleDegrees].sort((a, b) => a.floatVal - b.floatVal);
-  let lines = [];
-  lines.push("! Generated by Scale WKSP");
-  lines.push("table begin");
-  for (let i = 0; i < sorted.length; i++) {
-    let ratio = sorted[i].floatVal;
-    let cents = 1200 * Math.log2(ratio);
-    lines.push(` ${i + 1}) ${cents.toFixed(5)}`);
-  }
-  lines.push("table end");
-  lines.push("octave 1200.0");
-  lines.push(`middle note ${refMidi}`);
-  lines.push(`base freq ${refFreq.toFixed(5)}`);
-  return lines.join("\n") + "\n";
-}
 
 /**************************************************************************
  * Helpers
@@ -996,77 +902,4 @@ function setControlsEnabled(enabled) {
   document.querySelectorAll(".controls button, .controls input, .controls select")
     .forEach(el => { el.disabled = !enabled; });
 }
-function fractionStringApprox(x) {
-  let [num, den] = bestRationalApproximation(x, 100000);
-  let approx = num / den;
-  let err = Math.abs(x - approx);
-  let label = `${num}/${den}`;
-  if (err > 0.01) label = "~" + label;
-  return label;
-}
-function bestRationalApproximation(x, maxDen) {
-  let pPrevPrev = 0, pPrev = 1;
-  let qPrevPrev = 1, qPrev = 0;
-  let fraction = x;
-  let a = Math.floor(fraction);
-  let p = a * pPrev + pPrevPrev;
-  let q = a * qPrev + qPrevPrev;
-  while (true) {
-    let remainder = fraction - a;
-    if (Math.abs(remainder) < 1e-12) break;
-    fraction = 1 / remainder;
-    a = Math.floor(fraction);
-    let pNext = a * p + pPrev;
-    let qNext = a * q + qPrev;
-    if (qNext > maxDen) break;
-    pPrevPrev = pPrev;
-    qPrevPrev = qPrev;
-    pPrev = p;
-    qPrev = q;
-    p = pNext;
-    q = qNext;
-  }
-  return [p, q];
-}
-function parseFractionOrDecimal(s) {
-  s = s.trim();
-  if (!s) return NaN;
-  if (s.includes("^")) {
-    let match = s.match(/^(.+)\^(.+)$/);
-    if (!match) return NaN;
-    let baseStr = match[1].replace(/^\(+/, "").replace(/\)+$/, "");
-    let expStr = match[2].replace(/^\(+/, "").replace(/\)+$/, "");
-    let baseVal = parseFractionOrDecimal(baseStr);
-    let expVal = parseFractionOrDecimal(expStr);
-    if (!isFinite(baseVal) || !isFinite(expVal)) return NaN;
-    return Math.pow(baseVal, expVal);
-  }
-  if (s.includes("/")) {
-    let parts = s.split("/");
-    if (parts.length !== 2) return NaN;
-    let num = parseFloat(parts[0]);
-    let den = parseFloat(parts[1]);
-    if (!isFinite(num) || !isFinite(den) || den === 0) return NaN;
-    return num / den;
-  }
-  return parseFloat(s);
-}
-function ratioToHue(ratio) {
-  let t = ratio - 1;
-  return 360 * t;
-}
-function hexToRgba(hex, alpha) {
-  // Remove the hash if present
-  hex = hex.replace(/^#/, "");
-  let r, g, b;
-  if (hex.length === 3) {
-    r = parseInt(hex[0] + hex[0], 16);
-    g = parseInt(hex[1] + hex[1], 16);
-    b = parseInt(hex[2] + hex[2], 16);
-  } else if (hex.length === 6) {
-    r = parseInt(hex.substr(0, 2), 16);
-    g = parseInt(hex.substr(2, 2), 16);
-    b = parseInt(hex.substr(4, 2), 16);
-  }
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+
