@@ -1,62 +1,72 @@
 // audio.js — all audio-related stuff, exported as a module
 
-// Create AudioContext (desktop + iOS Safari compatible)
-export const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// Lazily created AudioContext so iOS sees it as user-gesture initiated
+let audioCtx = null;
 
-// amplitude constants
-export const BASE_AMP = 0.5;   // baseline for one voice
-export const MIN_AMP  = 0.2;   // never quieter than this
-export const MAX_AMP  = 0.95;  // keep head-room
+export function getAudioCtx() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) {
+      throw new Error("Web Audio API not supported in this browser.");
+    }
+    audioCtx = new AC();
+  }
+  return audioCtx;
+}
 
-function ampForFreq(freq, voices = 1) {
+// amplitude constants (kept internal – you can export if you want)
+const BASE_AMP = 0.5;   // baseline for one voice
+const MIN_AMP  = 0.2;   // never quieter than this
+const MAX_AMP  = 0.95;  // keep head-room
+
+export function ampForFreq(freq, voices = 1) {
   let a = BASE_AMP / voices * Math.sqrt(440 / freq);
   return Math.max(Math.min(a, MAX_AMP), MIN_AMP / voices);
 }
 
 // Reusable unlock function (used before any sound)
+// NEW: uses getAudioCtx() instead of raw audioCtx
 export async function unlockAudio() {
   try {
-    const silentAudio = document.getElementById('unlockSound');
+    const ctx = getAudioCtx();
 
-    // Try to play the silent <audio>, but don't depend on it working
-    if (silentAudio) {
-      try {
-        await silentAudio.play();
-        setTimeout(() => {
-          silentAudio.pause();
-          silentAudio.currentTime = 0;
-        }, 200);
-      } catch (err) {
-        console.warn('Silent unlockSound failed to play:', err);
-      }
+    // On iOS, resume() must be in a user-gesture handler
+    if (ctx.state === "suspended" || ctx.state === "interrupted") {
+      await ctx.resume();
     }
 
-    // ALWAYS try to resume the AudioContext while we're still in the user gesture
-    if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
-      await audioCtx.resume();
-    }
+    // Ultra-short, almost-silent pulse just to fully unlock on mobile
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
 
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime); // basically silent
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.01);
   } catch (err) {
-    console.warn('unlockAudio() failed:', err);
+    console.warn("unlockAudio failed:", err);
   }
 }
-
 
 // sequential single note
 export function playOneNoteSequential(freq, duration, voices = 1) {
   return new Promise(async resolve => {
-    if (audioCtx.state === "suspended") await audioCtx.resume();
-    const now = audioCtx.currentTime;
+    const ctx = getAudioCtx();
+    if (ctx.state === "suspended") await ctx.resume();
+    const now = ctx.currentTime;
 
-    const osc  = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
 
     gain.gain.setValueAtTime(ampForFreq(freq, voices), now);
     gain.gain.linearRampToValueAtTime(0, now + duration);
 
-    osc.connect(gain).connect(audioCtx.destination);
+    osc.connect(gain).connect(ctx.destination);
     osc.onended = resolve;
     osc.start(now);
     osc.stop(now + duration);
@@ -66,21 +76,22 @@ export function playOneNoteSequential(freq, duration, voices = 1) {
 // chord / multiple notes at once
 export async function playNotesSimult(freqArray) {
   if (!freqArray || !freqArray.length) return;
-  if (audioCtx.state === "suspended") await audioCtx.resume();
-  const now = audioCtx.currentTime;
+  const ctx = getAudioCtx();
+  if (ctx.state === "suspended") await ctx.resume();
+  const now = ctx.currentTime;
   const duration = 1.0;
   const voices = freqArray.length;
 
   for (const freq of freqArray) {
-    const osc  = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
 
     gain.gain.setValueAtTime(ampForFreq(freq, voices), now);
     gain.gain.linearRampToValueAtTime(0, now + duration);
 
-    osc.connect(gain).connect(audioCtx.destination);
+    osc.connect(gain).connect(ctx.destination);
     osc.start(now);
     osc.stop(now + duration);
   }

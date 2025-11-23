@@ -1,5 +1,4 @@
 import {
-  audioCtx,
   unlockAudio,
   playOneNoteSequential,
   playNotesSimult
