@@ -1,75 +1,42 @@
 // audio.js — all audio-related stuff, exported as a module
 
-// ---------------------------------------------------------------------
-// 0) User-tunable constants (volume, wave balance, partial recipes)
-// ---------------------------------------------------------------------
+// =====================================================================
+// 0) TWIDDABLE CONSTANTS
+// =====================================================================
 
-// Master output ceiling (ear safety)
-const MASTER_GAIN_LEVEL = 0.1;
+// Global output safety — overall loudness cap
+const MASTER_GAIN_LEVEL = 0.35; // try 0.25–0.4 for comfort
 
-// Per-oscillator amplitude shaping
+// Per-voice amplitude shaping
 const BASE_AMP = 0.5;   // baseline for one voice
 const MIN_AMP  = 0.2;   // never quieter than this
 const MAX_AMP  = 0.95;  // keep head-room
 
 // Relative loudness compensation per waveform
-const WAVE_GAIN_MAP = {
+// (feel free to tweak these)
+const WAVEFORM_GAIN_FACTORS = {
   square:      0.05,
   sawtooth:    0.04,
   triangle:    0.8,
   softSquare:  0.15,
-  mellowSaw:   0.1,
-  hollowGlass: 0.1,
+  mellowSaw:   0.3,
+  hollowGlass: 0.25
 };
 
-// Built-in oscillator types we support directly
-const BUILT_IN_WAVES = ["triangle", "square", "sawtooth"];
+// Gentle compressor settings to tame peaks
+const COMP_THRESHOLD_DB = -18;  // when compression starts
+const COMP_KNEE_DB      = 24;
+const COMP_RATIO        = 4;
+const COMP_ATTACK_SEC   = 0.003;
+const COMP_RELEASE_SEC  = 0.25;
 
-// Waveforms that can be selected by the UI
-const ALLOWED_WAVEFORMS = [
-  "triangle",
-  "square",
-  "sawtooth",
-  "softSquare",
-  "mellowSaw",
-  "hollowGlass"
-];
+// =====================================================================
+// 1) AudioContext + master graph (masterGain -> compressor -> destination)
+// =====================================================================
 
-// Partial recipes for custom PeriodicWaves
-// 1) Soft Square — odd harmonics, faster decay than a true square
-const SOFT_SQUARE_PARTIALS = {
-  1: 1.0,
-  3: 0.4,
-  5: 0.2,
-  7: 0.1,
-  9: 0.05
-};
-
-// 2) Mellow Saw — all harmonics but heavily tapered
-const MELLOW_SAW_PARTIALS = {
-  1: 1.0,
-  2: 0.3,
-  3: 0.15,
-  4: 0.08,
-  5: 0.04,
-  6: 0.02
-};
-
-// 3) Hollow Glass — slightly weird, shifted energy
-const HOLLOW_GLASS_PARTIALS = {
-  1: 0.3,
-  2: 1.0,
-  3: 0.6,
-  4: 0.2,
-  5: 0.4
-};
-
-// ---------------------------------------------------------------------
-// 1) AudioContext + master output
-// ---------------------------------------------------------------------
-
-// Lazily created AudioContext so iOS sees it as user-gesture initiated
-let audioCtx = null;
+let audioCtx   = null;
+let masterGain = null;
+let compressor = null;
 
 export function getAudioCtx() {
   if (!audioCtx) {
@@ -78,30 +45,52 @@ export function getAudioCtx() {
       throw new Error("Web Audio API not supported in this browser.");
     }
     audioCtx = new AC();
+    setupMasterGraph(audioCtx);
   }
   return audioCtx;
 }
 
-let masterGain = null;
+function setupMasterGraph(ctx) {
+  if (masterGain && compressor) return;
 
-function getMasterGain(ctx) {
-  if (!masterGain) {
-    masterGain = ctx.createGain();
-    masterGain.gain.value = MASTER_GAIN_LEVEL;
-    masterGain.connect(ctx.destination);
-  }
-  return masterGain;
+  // Master gain (global volume cap)
+  masterGain = ctx.createGain();
+  masterGain.gain.value = MASTER_GAIN_LEVEL;
+
+  // Dynamics compressor to tame sudden peaks
+  compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.setValueAtTime(COMP_THRESHOLD_DB, ctx.currentTime);
+  compressor.knee.setValueAtTime(COMP_KNEE_DB, ctx.currentTime);
+  compressor.ratio.setValueAtTime(COMP_RATIO, ctx.currentTime);
+  compressor.attack.setValueAtTime(COMP_ATTACK_SEC, ctx.currentTime);
+  compressor.release.setValueAtTime(COMP_RELEASE_SEC, ctx.currentTime);
+
+  // Wire: voices -> masterGain -> compressor -> speakers
+  masterGain.connect(compressor).connect(ctx.destination);
 }
 
-// ---------------------------------------------------------------------
+// =====================================================================
 // 2) Waveform state + custom PeriodicWaves
-// ---------------------------------------------------------------------
+// =====================================================================
 
 let currentWaveform = "triangle"; // default
-let periodicWaves = null;         // cache for custom PeriodicWaves
+
+// cache for custom PeriodicWaves
+let periodicWaves = null;
+
+// names of built-in oscillator types (no sine in UI list)
+const BUILT_IN_WAVES = ["triangle", "square", "sawtooth"];
 
 export function setWaveform(type) {
-  if (ALLOWED_WAVEFORMS.includes(type)) {
+  const allowed = [
+    "triangle",
+    "square",
+    "sawtooth",
+    "softSquare",
+    "mellowSaw",
+    "hollowGlass"
+  ];
+  if (allowed.includes(type)) {
     currentWaveform = type;
   } else {
     currentWaveform = "triangle";
@@ -114,7 +103,7 @@ function ensurePeriodicWaves(ctx) {
   function buildWave(partials) {
     // partials = { harmonicNumber: amplitude, ... }
     const maxHarm = Math.max(...Object.keys(partials).map(n => parseInt(n, 10)));
-    const real = new Float32Array(maxHarm + 1); // leave real = 0 for sine-series
+    const real = new Float32Array(maxHarm + 1); // keep real = 0 for sine-series
     const imag = new Float32Array(maxHarm + 1);
     for (const [k, amp] of Object.entries(partials)) {
       const idx = parseInt(k, 10);
@@ -123,9 +112,33 @@ function ensurePeriodicWaves(ctx) {
     return ctx.createPeriodicWave(real, imag);
   }
 
-  const softSquare = buildWave(SOFT_SQUARE_PARTIALS);
-  const mellowSaw  = buildWave(MELLOW_SAW_PARTIALS);
-  const hollowGlass = buildWave(HOLLOW_GLASS_PARTIALS);
+  // 1) Soft Square — odd harmonics, faster decay than a true square
+  const softSquare = buildWave({
+    1: 1.0,
+    3: 0.4,
+    5: 0.2,
+    7: 0.1,
+    9: 0.05
+  });
+
+  // 2) Mellow Saw — all harmonics but heavily tapered
+  const mellowSaw = buildWave({
+    1: 1.0,
+    2: 0.3,
+    3: 0.15,
+    4: 0.08,
+    5: 0.04,
+    6: 0.02
+  });
+
+  // 3) Hollow Glass — slightly weird, shifted energy
+  const hollowGlass = buildWave({
+    1: 0.3,
+    2: 1.0,
+    3: 0.6,
+    4: 0.2,
+    5: 0.4
+  });
 
   periodicWaves = {
     softSquare,
@@ -135,13 +148,17 @@ function ensurePeriodicWaves(ctx) {
   return periodicWaves;
 }
 
-// ---------------------------------------------------------------------
+// =====================================================================
 // 3) Amplitude helpers + unlock
-// ---------------------------------------------------------------------
+// =====================================================================
 
 export function ampForFreq(freq, voices = 1) {
   let a = BASE_AMP / voices * Math.sqrt(440 / freq);
   return Math.max(Math.min(a, MAX_AMP), MIN_AMP / voices);
+}
+
+function waveGainFactor(type) {
+  return WAVEFORM_GAIN_FACTORS[type] ?? 1.0;
 }
 
 // Reusable unlock function (used before any sound)
@@ -153,17 +170,15 @@ export async function unlockAudio() {
       await ctx.resume();
     }
 
-    const mg = getMasterGain(ctx);
-
     // Ultra-short, almost-silent pulse just to fully unlock on mobile
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
 
     gain.gain.setValueAtTime(0.0001, ctx.currentTime); // basically silent
-    osc.type = "sine";
+    osc.type = "sine"; // internal only, not exposed in UI
     osc.frequency.setValueAtTime(440, ctx.currentTime);
 
-    osc.connect(gain).connect(mg);
+    osc.connect(gain).connect(masterGain);
     osc.start();
     osc.stop(ctx.currentTime + 0.01);
   } catch (err) {
@@ -171,9 +186,9 @@ export async function unlockAudio() {
   }
 }
 
-// ---------------------------------------------------------------------
+// =====================================================================
 // 4) Playback helpers
-// ---------------------------------------------------------------------
+// =====================================================================
 
 // sequential single note
 export function playOneNoteSequential(freq, duration, voices = 1) {
@@ -182,8 +197,7 @@ export function playOneNoteSequential(freq, duration, voices = 1) {
     if (ctx.state === "suspended") await ctx.resume();
     ensurePeriodicWaves(ctx);
 
-    const mg  = getMasterGain(ctx);
-    const now = ctx.currentTime;
+    const now  = ctx.currentTime;
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -203,7 +217,7 @@ export function playOneNoteSequential(freq, duration, voices = 1) {
     gain.gain.setValueAtTime(baseAmp * factor, now);
     gain.gain.linearRampToValueAtTime(0, now + duration);
 
-    osc.connect(gain).connect(mg);
+    osc.connect(gain).connect(masterGain);
     osc.onended = resolve;
     osc.start(now);
     osc.stop(now + duration);
@@ -218,10 +232,9 @@ export async function playNotesSimult(freqArray) {
   if (ctx.state === "suspended") await ctx.resume();
   ensurePeriodicWaves(ctx);
 
-  const mg  = getMasterGain(ctx);
-  const now = ctx.currentTime;
+  const now      = ctx.currentTime;
   const duration = 1.0;
-  const voices = freqArray.length;
+  const voices   = freqArray.length;
 
   for (const freq of freqArray) {
     const osc  = ctx.createOscillator();
@@ -242,15 +255,8 @@ export async function playNotesSimult(freqArray) {
     gain.gain.setValueAtTime(baseAmp * factor, now);
     gain.gain.linearRampToValueAtTime(0, now + duration);
 
-    osc.connect(gain).connect(mg);
+    osc.connect(gain).connect(masterGain);
     osc.start(now);
     osc.stop(now + duration);
   }
-}
-
-// ---------------------------------------------------------------------
-// 5) Wave gain lookup
-// ---------------------------------------------------------------------
-function waveGainFactor(type) {
-  return WAVE_GAIN_MAP[type] ?? 1.0;
 }

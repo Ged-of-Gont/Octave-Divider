@@ -29,6 +29,8 @@ import {
  **************************************************************************/
 const cssVars = getComputedStyle(document.documentElement);
 const DRAG_TOLERANCE_PX = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
+const TAP_MOVE_THRESHOLD = 10; // px – adjust if needed
+let touchStartData = new Map(); // touchId -> { x, y, time, moved }
 const DEFAULT_PARTICLE_COUNT = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 250;
 const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-velocity-scale")) || 0.02;
 const PARTICLE_LIFETIME_BASE = parseFloat(cssVars.getPropertyValue("--particle-lifetime-base")) || 1000;
@@ -72,6 +74,8 @@ let tonic = 261.63;
 let particles = [];
 
 let viewMode = "scale";
+let isZoomed = false;
+let lastTouchTime = 0;
 
 // Canvas + geometry
 const canvas = document.getElementById("scale-canvas");
@@ -80,6 +84,7 @@ let LEFT_X = 0, RIGHT_X = 0, MID_Y = 0, WIDTH = 0;
 
 // For dragging
 let draggingMarker = null;
+
 
 // For clickable labels
 let clickableRegions = [];
@@ -105,10 +110,32 @@ function init() {
     tonicInput.value = noteSelect.value;
   });
 
-
   const instructionsEl = document.querySelector(".instructions");
   // Set the initial instructions text for scale view:
   instructionsEl.innerHTML = scaleInstructions;
+
+  const zoomBtn = document.getElementById("zoomToggleBtn");
+  const canvasContainer = document.getElementById("canvas-container");
+
+  zoomBtn.addEventListener("click", () => {
+    isZoomed = !isZoomed;
+
+    // Update button label
+    zoomBtn.textContent = isZoomed ? "Shrink View" : "Expand View";
+
+    // Toggle a class on the container (for scroll behavior)
+    if (isZoomed) {
+      canvasContainer.classList.add("zoomed");
+    } else {
+      canvasContainer.classList.remove("zoomed");
+    }
+
+    // Recalculate canvas pixel size for the new zoom
+    resizeCanvas();
+  });
+
+
+
 
   document.getElementById("toggleViewBtn").addEventListener("click", () => {
     if (viewMode === "scale") {
@@ -131,7 +158,6 @@ function init() {
       setWaveform(waveformSelect.value);
     });
   }
-
 
   document.getElementById("setTonicBtn").addEventListener("click", () => {
     let val = parseFloat(tonicInput.value);
@@ -334,9 +360,17 @@ function drawParticles() {
  * 5) Render the Scale
  **************************************************************************/
 function resizeCanvas() {
+  // 1x width normally, 2x width when zoomed
+  const scale = isZoomed ? 2 : 1;
+
+  // Make the canvas wider in CSS so it can scroll horizontally
+  canvas.style.width = (scale * 100) + "%";
+
+  // Match the internal resolution to the displayed size
   canvas.width = canvas.clientWidth;
   canvas.height = canvas.clientHeight;
 }
+
 function renderScale() {
   clickableRegions = [];
   LEFT_X = 0.05 * canvas.width;
@@ -498,32 +532,16 @@ function renderKeyboard() {
     }
 
     // Register the clickable region for the key.
-    registerClickable(x, y, keyWidth, keyHeight, async (trigger) => {
-      if (viewMode === "keyboard") {
-        // If this is a touch event (with a defined identifier)
-        if (trigger && typeof trigger.identifier !== "undefined") {
-          if (note.keyboardActive !== undefined) return;  // already active for a touch
-          note.keyboardActive = trigger.identifier;
-        }
-        // For mouse events (trigger.identifier is undefined), bypass the block
-        await unlockAudio();
-        note.pulse = { start: performance.now() };
-        playNotesSimult([note.floatVal * tonic]);
-      } else {
-        // scale view behavior – chord logic as before...
-        await unlockAudio();
-        note.pulse = { start: performance.now() };
-        createParticlesGaussian(note, DEFAULT_PARTICLE_COUNT);
-        let others = scaleDegrees.filter(d => d.selected && d !== note);
-        others.forEach(o => {
-          o.pulse = { start: performance.now() };
-          createParticlesGaussian(o, DEFAULT_PARTICLE_COUNT);
-        });
-        let freqValue = note.floatVal * tonic;
-        let allFreqs = [freqValue, ...others.map(o => o.floatVal * tonic)];
-        playNotesSimult(allFreqs);
-      }
+      // Register the clickable region for the key.
+    registerClickable(x, y, keyWidth, keyHeight, async () => {
+      if (viewMode !== "keyboard") return;
+
+      await unlockAudio();
+      note.pulse = { start: performance.now() };
+      playNotesSimult([note.floatVal * tonic]);
     });
+
+
 
   }
 }
@@ -605,81 +623,164 @@ function drawLabel(label) {
   }
 }
 /**************************************************************************
- * Touch Events for Dragging
+ * Touch Events — SCALE uses touch for dragging, KEYBOARD uses it for taps
+ * (scrolling stays native in keyboard view)
  **************************************************************************/
 function onCanvasTouchStart(e) {
-  e.preventDefault(); // Prevent scrolling
+  // mark that a touch just happened so we can ignore the synthetic mouse event
+  lastTouchTime = Date.now();
+
   let rect = canvas.getBoundingClientRect();
 
-  // Use changedTouches to process only new touches
-  for (let i = 0; i < e.changedTouches.length; i++) {
-    let t = e.changedTouches[i];
-    let mx = t.clientX - rect.left;
-    let my = t.clientY - rect.top;
+  if (viewMode === "scale") {
+    // Block page scroll while dragging / tapping scale stuff
+    e.preventDefault();
 
-    // In scale view, check for draggable markers.
-    if (viewMode === "scale") {
+    // Use changedTouches to process only new touches
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      let t = e.changedTouches[i];
+      let id = t.identifier;
+      touchStartData.set(id, {
+        x: t.clientX,
+        y: t.clientY,
+        moved: false
+      });
+
+      let mx = t.clientX - rect.left;
+      let my = t.clientY - rect.top;
+
+      // Check for draggable marker first
       let marker = getMarkerAtPosition(mx, my);
       if (marker) {
         draggingMarker = marker;
         continue;
       }
-    }
 
-    // Check through clickable regions for new touch.
-    for (let j = clickableRegions.length - 1; j >= 0; j--) {
-      let r = clickableRegions[j];
-      if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-        // Pass the individual touch object (t) to the callback.
-        r.callback(t);
-        break;
+      // Otherwise, hit test clickable regions (ratio labels, Hz labels, checkboxes)
+      for (let j = clickableRegions.length - 1; j >= 0; j--) {
+        let r = clickableRegions[j];
+        if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+          r.callback(t); // pass touch object to callback
+          break;
+        }
       }
     }
+
+  } else if (viewMode === "keyboard") {
+    // In keyboard view, just record the start — we only fire notes on TOUCH END
+    // if the finger hasn't moved much (i.e., it's a tap, not a scroll).
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      let t = e.changedTouches[i];
+      let id = t.identifier;
+      touchStartData.set(id, {
+        x: t.clientX,
+        y: t.clientY,
+        moved: false
+      });
+    }
+    // No preventDefault: allow horizontal scrolling on the container.
   }
 }
 
-
 function onCanvasTouchMove(e) {
-  e.preventDefault();
   let rect = canvas.getBoundingClientRect();
 
-  // Only process dragging in scale view
-  if (viewMode === "scale" && draggingMarker) {
-    for (let i = 0; i < e.touches.length; i++) {
-      let t = e.touches[i];
-      let mx = t.clientX - rect.left;
-      let newRatio = xToRatio(mx, LEFT_X, WIDTH);
-      newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
-      let snapped = maybeSnap(newRatio);
-      draggingMarker.floatVal = snapped;
-      draggingMarker.fractionText = fractionStringApprox(snapped);
+  // Update moved flag for all active touches
+  for (let i = 0; i < e.touches.length; i++) {
+    let t = e.touches[i];
+    let id = t.identifier;
+    let start = touchStartData.get(id);
+    if (!start) continue;
+
+    let dx = t.clientX - start.x;
+    let dy = t.clientY - start.y;
+    if (!start.moved && Math.hypot(dx, dy) > TAP_MOVE_THRESHOLD) {
+      start.moved = true;
+      touchStartData.set(id, start);
     }
+  }
+
+  if (viewMode === "scale") {
+    // Only process dragging in scale view
+    e.preventDefault();
+
+    if (draggingMarker) {
+      for (let i = 0; i < e.touches.length; i++) {
+        let t = e.touches[i];
+        let mx = t.clientX - rect.left;
+        let newRatio = xToRatio(mx, LEFT_X, WIDTH);
+        newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
+        let snapped = maybeSnap(newRatio);
+        draggingMarker.floatVal = snapped;
+        draggingMarker.fractionText = fractionStringApprox(snapped);
+      }
+    }
+  } else {
+    // keyboard view: do nothing here, let browser handle scroll
   }
 }
 
 function onCanvasTouchEnd(e) {
-  // Iterate over the touches that ended
+  // mark that a touch just finished (extra safety for ignoring synthetic mouse)
+  lastTouchTime = Date.now();
+  let rect = canvas.getBoundingClientRect();
+
+  // Always clear keyboardActive for ended touches so polyphony can retrigger
   for (let i = 0; i < e.changedTouches.length; i++) {
     let t = e.changedTouches[i];
-    // Clear the keyboardActive flag for any note that was triggered by this touch.
     scaleDegrees.forEach(note => {
       if (note.keyboardActive === t.identifier) {
         note.keyboardActive = undefined;
       }
     });
   }
-  // In case there are no more touches, clear dragging marker.
-  if (e.touches.length === 0) {
-    draggingMarker = null;
+
+  if (viewMode === "keyboard") {
+    // Trigger notes ONLY for taps (touch that did not move much)
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      let t = e.changedTouches[i];
+      let id = t.identifier;
+      let start = touchStartData.get(id);
+      touchStartData.delete(id);
+
+      // If we have no start data or the touch moved too far, treat it as scroll/drag → ignore
+      if (!start || start.moved) continue;
+
+      let mx = t.clientX - rect.left;
+      let my = t.clientY - rect.top;
+
+      // Hit test keys and fire note
+      for (let j = clickableRegions.length - 1; j >= 0; j--) {
+        let r = clickableRegions[j];
+        if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+          r.callback(t);
+          break;
+        }
+      }
+    }
+  } else if (viewMode === "scale") {
+    // For scale view, same behavior as before: stop dragging when last touch ends
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      touchStartData.delete(e.changedTouches[i].identifier);
+    }
+    if (e.touches.length === 0) {
+      draggingMarker = null;
+    }
+    e.preventDefault();
   }
-  e.preventDefault();
 }
+
 
 
 /**************************************************************************
  * Mouse events for dragging
  **************************************************************************/
 function onCanvasMouseDown(evt) {
+  // If a touch just happened, ignore the synthetic mouse event
+  if (Date.now() - lastTouchTime < 500) {
+    return;
+  }
+
   let rect = canvas.getBoundingClientRect();
   let mx = evt.clientX - rect.left;
   let my = evt.clientY - rect.top;
@@ -702,6 +803,7 @@ function onCanvasMouseDown(evt) {
     }
   }
 }
+
 
 function onCanvasMouseMove(evt) {
   // Only execute dragging if we are in scale view and a marker is being dragged.
