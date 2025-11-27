@@ -10,7 +10,6 @@ import {
   setWaveform
 } from './js modules/audio.js';
 
-
 import {
   fractionStringApprox,
   parseFractionOrDecimal,
@@ -29,7 +28,7 @@ import {
  **************************************************************************/
 const cssVars = getComputedStyle(document.documentElement);
 const DRAG_TOLERANCE_PX = parseFloat(cssVars.getPropertyValue("--drag-tolerance-px")) || 10;
-const TAP_MOVE_THRESHOLD = 10; // px – adjust if needed
+const TAP_MOVE_THRESHOLD = 30; // px – adjust if needed
 let touchStartData = new Map(); // touchId -> { x, y, time, moved }
 const DEFAULT_PARTICLE_COUNT = parseFloat(cssVars.getPropertyValue("--default-particle-count")) || 250;
 const PARTICLE_VELOCITY_SCALE = parseFloat(cssVars.getPropertyValue("--particle-velocity-scale")) || 0.02;
@@ -85,7 +84,6 @@ let LEFT_X = 0, RIGHT_X = 0, MID_Y = 0, WIDTH = 0;
 // For dragging
 let draggingMarker = null;
 
-
 // For clickable labels
 let clickableRegions = [];
 
@@ -133,9 +131,6 @@ function init() {
     // Recalculate canvas pixel size for the new zoom
     resizeCanvas();
   });
-
-
-
 
   document.getElementById("toggleViewBtn").addEventListener("click", () => {
     if (viewMode === "scale") {
@@ -204,7 +199,6 @@ function init() {
     setControlsEnabled(true);
     isPlaying = false;
   });
-
 
   document.getElementById("saveBtn").addEventListener("click", doSave);
   document.getElementById("loadBtn").addEventListener("click", () => {
@@ -277,7 +271,6 @@ function animate() {
     renderKeyboard();
   }
 }
-
 
 /**************************************************************************
  * 4) Particle System (Original Glow + Distribution + Global Cap)
@@ -540,9 +533,6 @@ function renderKeyboard() {
       note.pulse = { start: performance.now() };
       playNotesSimult([note.floatVal * tonic]);
     });
-
-
-
   }
 }
 
@@ -622,112 +612,109 @@ function drawLabel(label) {
     });
   }
 }
-/**************************************************************************
- * Touch Events — SCALE uses touch for dragging, KEYBOARD uses it for taps
- * (scrolling stays native in keyboard view)
- **************************************************************************/
 function onCanvasTouchStart(e) {
   // mark that a touch just happened so we can ignore the synthetic mouse event
   lastTouchTime = Date.now();
 
-  let rect = canvas.getBoundingClientRect();
+  const rect = canvas.getBoundingClientRect();
 
   if (viewMode === "scale") {
-    // Block page scroll while dragging / tapping scale stuff
-    e.preventDefault();
+    // SCALE VIEW: only block scroll if we actually hit a marker or label
+    let handled = false;
 
-    // Use changedTouches to process only new touches
     for (let i = 0; i < e.changedTouches.length; i++) {
-      let t = e.changedTouches[i];
-      let id = t.identifier;
-      touchStartData.set(id, {
-        x: t.clientX,
-        y: t.clientY,
-        moved: false
-      });
+      const t = e.changedTouches[i];
+      const mx = t.clientX - rect.left;
+      const my = t.clientY - rect.top;
 
-      let mx = t.clientX - rect.left;
-      let my = t.clientY - rect.top;
-
-      // Check for draggable marker first
-      let marker = getMarkerAtPosition(mx, my);
+      // 1) Try to grab a draggable marker
+      const marker = getMarkerAtPosition(mx, my);
       if (marker) {
         draggingMarker = marker;
+        handled = true;
         continue;
       }
 
-      // Otherwise, hit test clickable regions (ratio labels, Hz labels, checkboxes)
+      // 2) Otherwise, see if we hit any clickable region (ratio, Hz, checkbox)
       for (let j = clickableRegions.length - 1; j >= 0; j--) {
-        let r = clickableRegions[j];
+        const r = clickableRegions[j];
         if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-          r.callback(t); // pass touch object to callback
+          r.callback(t);
+          handled = true;
           break;
         }
       }
     }
 
+    if (handled) {
+      // We interacted with something in the scale → stop page / container scroll
+      e.preventDefault();
+    }
   } else if (viewMode === "keyboard") {
-    // In keyboard view, just record the start — we only fire notes on TOUCH END
-    // if the finger hasn't moved much (i.e., it's a tap, not a scroll).
+    // KEYBOARD VIEW: fire notes immediately on touch down if we’re on a key.
+    let handled = false;
+
     for (let i = 0; i < e.changedTouches.length; i++) {
-      let t = e.changedTouches[i];
-      let id = t.identifier;
-      touchStartData.set(id, {
-        x: t.clientX,
-        y: t.clientY,
-        moved: false
-      });
-    }
-    // No preventDefault: allow horizontal scrolling on the container.
-  }
-}
+      const t = e.changedTouches[i];
+      const mx = t.clientX - rect.left;
+      const my = t.clientY - rect.top;
 
-function onCanvasTouchMove(e) {
-  let rect = canvas.getBoundingClientRect();
-
-  // Update moved flag for all active touches
-  for (let i = 0; i < e.touches.length; i++) {
-    let t = e.touches[i];
-    let id = t.identifier;
-    let start = touchStartData.get(id);
-    if (!start) continue;
-
-    let dx = t.clientX - start.x;
-    let dy = t.clientY - start.y;
-    if (!start.moved && Math.hypot(dx, dy) > TAP_MOVE_THRESHOLD) {
-      start.moved = true;
-      touchStartData.set(id, start);
-    }
-  }
-
-  if (viewMode === "scale") {
-    // Only process dragging in scale view
-    e.preventDefault();
-
-    if (draggingMarker) {
-      for (let i = 0; i < e.touches.length; i++) {
-        let t = e.touches[i];
-        let mx = t.clientX - rect.left;
-        let newRatio = xToRatio(mx, LEFT_X, WIDTH);
-        newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
-        let snapped = maybeSnap(newRatio);
-        draggingMarker.floatVal = snapped;
-        draggingMarker.fractionText = fractionStringApprox(snapped);
+      for (let j = clickableRegions.length - 1; j >= 0; j--) {
+        const r = clickableRegions[j];
+        if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+          r.callback(t);   // key callback plays the note
+          handled = true;
+          break;
+        }
       }
     }
-  } else {
-    // keyboard view: do nothing here, let browser handle scroll
+
+    if (handled) {
+      // We actually hit a key → prevent synthetic mouse/click from double-firing.
+      e.preventDefault();
+    }
+    // If not handled, we don’t preventDefault → horizontal scroll stays possible.
   }
 }
+
+
+function onCanvasTouchMove(e) {
+  const rect = canvas.getBoundingClientRect();
+
+  if (viewMode === "scale") {
+    // Only block scroll when we’re actually dragging a marker
+    if (!draggingMarker) {
+      return; // finger is just panning the zoomed view → let browser handle it
+    }
+
+    e.preventDefault();
+
+    // Use the first active touch to drive the marker
+    const t = e.touches[0];
+    if (!t) return;
+
+    const mx = t.clientX - rect.left;
+    let newRatio = xToRatio(mx, LEFT_X, WIDTH);
+    newRatio = Math.max(1.0001, Math.min(newRatio, 1.9999));
+    const snapped = maybeSnap(newRatio);
+    draggingMarker.floatVal = snapped;
+    draggingMarker.fractionText = fractionStringApprox(snapped);
+  } else if (viewMode === "keyboard") {
+    // No special handling for move in keyboard view (for now).
+    // If you later want slide-to-other-key, we can add it here.
+  }
+}
+
+
 
 function onCanvasTouchEnd(e) {
   // mark that a touch just finished (extra safety for ignoring synthetic mouse)
   lastTouchTime = Date.now();
-  let rect = canvas.getBoundingClientRect();
 
-  // Always clear keyboardActive for ended touches so polyphony can retrigger
+  // Clear any keyboardActive flags for ended touches (even though we’re not
+  // currently using keyboardActive anywhere, this is harmless cleanup).
   for (let i = 0; i < e.changedTouches.length; i++) {
-    let t = e.changedTouches[i];
+    const t = e.changedTouches[i];
     scaleDegrees.forEach(note => {
       if (note.keyboardActive === t.identifier) {
         note.keyboardActive = undefined;
@@ -735,42 +722,25 @@ function onCanvasTouchEnd(e) {
     });
   }
 
-  if (viewMode === "keyboard") {
-    // Trigger notes ONLY for taps (touch that did not move much)
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      let t = e.changedTouches[i];
-      let id = t.identifier;
-      let start = touchStartData.get(id);
-      touchStartData.delete(id);
-
-      // If we have no start data or the touch moved too far, treat it as scroll/drag → ignore
-      if (!start || start.moved) continue;
-
-      let mx = t.clientX - rect.left;
-      let my = t.clientY - rect.top;
-
-      // Hit test keys and fire note
-      for (let j = clickableRegions.length - 1; j >= 0; j--) {
-        let r = clickableRegions[j];
-        if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-          r.callback(t);
-          break;
-        }
-      }
+  if (viewMode === "scale") {
+    // Stop dragging when last touch ends
+    if (e.touches.length === 0 && draggingMarker) {
+      draggingMarker = null;
+      e.preventDefault();
     }
-  } else if (viewMode === "scale") {
-    // For scale view, same behavior as before: stop dragging when last touch ends
+
+    // clean up any touchStartData you might still have lying around
     for (let i = 0; i < e.changedTouches.length; i++) {
       touchStartData.delete(e.changedTouches[i].identifier);
     }
-    if (e.touches.length === 0) {
-      draggingMarker = null;
+  } else if (viewMode === "keyboard") {
+    // We already played the note on touchstart. Nothing else to do here,
+    // beyond clearing any touchStartData.
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      touchStartData.delete(e.changedTouches[i].identifier);
     }
-    e.preventDefault();
   }
 }
-
-
 
 /**************************************************************************
  * Mouse events for dragging
@@ -803,7 +773,6 @@ function onCanvasMouseDown(evt) {
     }
   }
 }
-
 
 function onCanvasMouseMove(evt) {
   // Only execute dragging if we are in scale view and a marker is being dragged.

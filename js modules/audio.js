@@ -5,7 +5,7 @@
 // =====================================================================
 
 // Global output safety — overall loudness cap
-const MASTER_GAIN_LEVEL = 0.35; // try 0.25–0.4 for comfort
+const MASTER_GAIN_LEVEL = 0.50; // try 0.25–0.4 for comfort
 
 // Per-voice amplitude shaping
 const BASE_AMP = 0.5;   // baseline for one voice
